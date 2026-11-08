@@ -5,10 +5,12 @@ import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeF
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { after, before, describe, it } from 'node:test'
+import { loadArchive } from '../scripts/lib/archive.mjs'
 import { buildArchive } from '../scripts/lib/build.mjs'
+import { catalogEntry, parsePublishedAt } from '../scripts/lib/catalog.mjs'
 import { REPO_ROOT, SRC_DIR } from '../scripts/lib/cli.mjs'
 import { collectFiles } from '../scripts/lib/package.mjs'
-import { createSignatureFile, fingerprint, rawPublicKeyOf, SIGNATURE_FILE, verifySignature } from '../scripts/lib/signature.mjs'
+import { createSignatureFile, fingerprint, rawPublicKeyOf, sha256Hex, SIGNATURE_FILE, verifySignature } from '../scripts/lib/signature.mjs'
 import { readZip, writeZip } from '../scripts/lib/zip.mjs'
 
 const node = (script, args, env = {}) => spawnSync(process.execPath, [resolve(REPO_ROOT, script), ...args], {
@@ -138,14 +140,46 @@ describe('command-line scripts', () => {
     assert.equal(again.status, 0, again.stderr)
     assert.ok(readFileSync(archive).equals(readFileSync(join(temp, 'signed-again', 'panel-theme-collection-1.0.0.agentpet-plugin'))))
 
+    // verify pins the key fingerprint and the archive SHA-256 the catalog entry records.
+    const sha256 = sha256Hex(readFileSync(archive))
+    assert.equal(node('scripts/verify.mjs', ['--fingerprint', print, '--sha256', sha256, archive]).status, 0)
+    const otherKey = node('scripts/verify.mjs', ['--fingerprint', '0123456789abcdef', archive])
+    assert.equal(otherKey.status, 1)
+    assert.match(otherKey.stderr, new RegExp(`signed by key ${print}, expected 0123456789abcdef`))
+    const otherHash = node('scripts/verify.mjs', ['--sha256', '0'.repeat(64), archive])
+    assert.equal(otherHash.status, 1)
+    assert.match(otherHash.stderr, /archive SHA-256 is [0-9a-f]{64}, expected 0{64}/)
+    assert.match(node('scripts/verify.mjs', ['--fingerprint', 'xyz', archive]).stderr, /16 hex characters/)
+    const unsigned = join(temp, 'unsigned', 'panel-theme-collection-1.0.0.agentpet-plugin')
+    assert.match(node('scripts/verify.mjs', ['--fingerprint', print, unsigned]).stderr, /archive is unsigned/)
+
     const entry = node('scripts/catalog-entry.mjs', [archive, '--published-at', '2026-11-08T00:00:00Z'])
     assert.equal(entry.status, 0, entry.stderr)
     const parsed = JSON.parse(entry.stdout)
+    // The exact key sets of the app's catalog parser (CATALOG_PLUGIN_KEYS, CATALOG_VERSION_KEYS).
+    assert.deepEqual(Object.keys(parsed).sort(), ['author', 'description', 'homepage', 'id', 'name', 'publicKeyFingerprint', 'versions'])
+    assert.deepEqual(Object.keys(parsed.versions[0]).sort(), ['apiVersion', 'minAppVersion', 'publishedAt', 'sha256', 'size', 'url', 'version'])
     assert.equal(parsed.publicKeyFingerprint, print)
     assert.equal(parsed.versions[0].minAppVersion, '1.12.0')
+    assert.equal(parsed.versions[0].sha256, sha256)
     assert.equal(parsed.versions[0].size, statSync(archive).size)
     assert.equal(parsed.versions[0].publishedAt, '2026-11-08T00:00:00.000Z')
-    assert.equal(node('scripts/catalog-entry.mjs', [join(temp, 'unsigned', 'panel-theme-collection-1.0.0.agentpet-plugin')]).status, 1)
+    assert.equal(parsed.versions[0].url, 'https://raw.githubusercontent.com/Ponpon55837/agent-pets-plugins/main/packages/panel-theme-collection-1.0.0.agentpet-plugin')
+    assert.equal(node('scripts/catalog-entry.mjs', [unsigned]).status, 1)
+    const notIso = node('scripts/catalog-entry.mjs', [archive, '--published-at', 'November 8, 2026'])
+    assert.equal(notIso.status, 1)
+    assert.match(notIso.stderr, /ISO 8601/)
+    assert.match(node('scripts/catalog-entry.mjs', [join(temp, 'missing.agentpet-plugin')]).stderr, /archive: does not exist/)
+
+    // A manifest text the app normalises but the catalog parser would drop is refused.
+    const loaded = loadArchive(archive)
+    loaded.result.manifest.author = ' Ponpon55837'
+    assert.throws(() => catalogEntry(loaded, new Date('2026-11-08T00:00:00Z')), /author: must be 1-64 trimmed characters/)
+  })
+
+  it('accepts only ISO 8601 publish times the app parses', () => {
+    assert.equal(parsePublishedAt('2026-11-08T09:30:00+08:00').toISOString(), '2026-11-08T01:30:00.000Z')
+    for (const value of ['2026-11-08', '2026-11-08 00:00:00Z', 'Nov 8 2026', '2026-13-40T00:00:00Z']) assert.equal(parsePublishedAt(value), null, value)
   })
 
   it('keygen writes a 0600 key outside the repo and never overwrites', () => {
