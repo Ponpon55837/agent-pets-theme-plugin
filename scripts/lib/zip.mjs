@@ -142,13 +142,24 @@ export function readZip(input, { maxEntries = 64, maxTotalBytes = 25 * 1024 * 10
     if (name.length === 0 || /[\u0000-\u001f\u007f]/.test(name) || name.startsWith('/') || name.includes('\\') || /^[a-zA-Z]:/.test(name) || name.split('/').includes('..')) {
       fail(`unsafe entry name ${JSON.stringify(name)}`)
     }
+    const centralName = bytes.subarray(cursor + 46, cursor + 46 + nameLength)
     cursor += 46 + nameLength + extraLength + commentLength
+    if (method === 0 && compressedSize !== size) fail(`${name}: stored entry sizes differ`)
 
+    // Same agreement rules as the app's zip-inspect.ts: flags, method, name
+    // bytes and (without a data descriptor) CRC and both sizes must match.
     if (localOffset + 30 > centralOffset || bytes.readUInt32LE(localOffset) !== 0x04034b50) fail(`${name}: bad local header`)
+    const localFlags = bytes.readUInt16LE(localOffset + 6)
     const localNameLength = bytes.readUInt16LE(localOffset + 26)
     const localExtra = bytes.readUInt16LE(localOffset + 28)
-    const localName = bytes.subarray(localOffset + 30, localOffset + 30 + localNameLength).toString('utf8')
-    if (localName !== name || bytes.readUInt16LE(localOffset + 8) !== method) fail(`${name}: local header disagrees with the central directory`)
+    const localName = bytes.subarray(localOffset + 30, localOffset + 30 + localNameLength)
+    const disagrees = localFlags !== flags
+      || bytes.readUInt16LE(localOffset + 8) !== method
+      || !localName.equals(centralName)
+      || ((flags & 0x8) === 0 && (bytes.readUInt32LE(localOffset + 14) !== crc
+        || bytes.readUInt32LE(localOffset + 18) !== compressedSize
+        || bytes.readUInt32LE(localOffset + 22) !== size))
+    if (disagrees) fail(`${name}: local header disagrees with the central directory`)
     const dataStart = localOffset + 30 + localNameLength + localExtra
     const dataEnd = dataStart + compressedSize
     if (dataEnd > centralOffset) fail(`${name}: data runs into the central directory`)
