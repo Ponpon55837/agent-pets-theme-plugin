@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Unit tests
+        run: npm test
+      - name: Validate themes and package rules
+        run: npm run validate
+      - name: Build the unsigned package
+        run: npm run build
+      - name: Verify the built archive
+        run: npm run verify -- dist/unsigned/panel-theme-collection-$(node -p "require('./src/plugin.json').version").agentpet-plugin
