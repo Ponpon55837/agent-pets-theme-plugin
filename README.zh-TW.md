@@ -87,30 +87,61 @@ AGENT_PETS_APP_DIR=<agent-pets checkout> npm test                 # 測試時也
 
 ### 簽章
 
-發佈者金鑰是 PKCS#8 PEM 格式的 Ed25519 私鑰，必須是權限 0600 的一般檔案（不可是符號連結），放在這個 repo 以及任何 git 工作目錄之外；`sign` 會拒絕其他情況，也不會印出或複製金鑰，`.gitignore` 也排除了 `*.pem`、`keys/`、`signature.json`、`.env*` 與 `dist/`。
+發佈者金鑰是 PKCS#8 PEM 格式的 Ed25519 私鑰（指紋 `e78c75d80c8fb08e`，固定在 `publisher.json`）。`sign` 只從權限 0600 的一般檔案（不可是符號連結）讀取金鑰，檔案必須在這個 repo 以及任何 git 工作目錄之外；它不會印出或複製金鑰。`.gitignore` 排除了 `*.pem`、`keys/`、`signature.json`、`.env*` 與 `dist/`。
 
-```sh
-# 只做一次：建立金鑰（不會覆寫既有檔案；權限 0600）
-npm run keygen -- --out ~/.agent-pets/keys/panel-theme-collection.ed25519.pem
-
-# 每次發佈：驗證、簽章並寫出 dist/panel-theme-collection-<version>.agentpet-plugin
-AGENT_PETS_SIGNING_KEY=~/.agent-pets/keys/panel-theme-collection.ed25519.pem npm run sign
-# 或
-npm run sign -- --key ~/.agent-pets/keys/panel-theme-collection.ed25519.pem
-
-# 印出線上目錄 index 項目（size、sha256、publicKeyFingerprint、minAppVersion 1.12.0）
-npm run catalog-entry -- dist/panel-theme-collection-<version>.agentpet-plugin   # 只能指定一個套件路徑
-```
-
-`sign` 會依照 Agent Pets 簽章文件，在套件根目錄加入 `signature.json`（對其他所有檔案排序後的 `路徑<TAB>sha256` 逐行內容做 Ed25519 簽章），並印出套件大小、SHA-256 與金鑰指紋。`src/` 不會被修改。請把金鑰離線備份；遺失時，使用者必須確認新的指紋。
-
-套件是可重現的：檔案依路徑排序、不壓縮直接儲存、時間固定為 1980-01-01，所以相同的 `src/` 永遠產生相同的位元組。
+`sign` 會依照 Agent Pets 簽章文件，在套件根目錄加入 `signature.json`（對其他所有檔案排序後的 `路徑<TAB>sha256` 逐行內容做 Ed25519 簽章），並印出套件大小、SHA-256 與金鑰指紋。`src/` 不會被修改。套件是可重現的：檔案依路徑排序、不壓縮直接儲存、時間固定為 1980-01-01，所以相同的 `src/` 永遠產生相同的位元組。
 
 ### 發佈
 
-1. 調高 `src/plugin.json` 的 `version`。已發佈的版本不會被覆蓋。
-2. 執行 `npm test && npm run sign`，再執行 `npm run verify -- --fingerprint <你的金鑰指紋> dist/<套件>`。
-3. 執行 `npm run catalog-entry -- dist/<套件>`，在線上目錄 repo 開 pull request：套件放在 `packages/`，印出的項目（含 `"minAppVersion": "1.12.0"`）加進 `index.json`。
+發佈由 `.github/workflows/release.yml` 簽章並送出：
+
+1. 調高 `src/plugin.json` 的 `version`（已發佈的版本不會被覆蓋），合併到 `main`。
+2. 在那個 commit 打 tag 並推送。tag 的註解會成為 release notes。
+
+   ```sh
+   git tag -a v1.0.1 -m "簡短的發佈說明"
+   git push origin v1.0.1
+   ```
+
+   手動執行（**Actions → Release → Run workflow**）時必須從該 tag 啟動，並輸入相同的版本。
+3. 審查並合併 workflow 在線上目錄 repo 開的 pull request。它永遠不會自動合併。
+
+workflow 有四個 job：
+
+| Job | Secret 與權限 | 內容 |
+|---|---|---|
+| `gate` | 唯讀 | tag 必須是 `v<semver>`、等於 `src/plugin.json` 的版本，且指向 `main` 上的 commit。執行 `npm ci`、含 App 契約測試的 `npm test`（App 取自 `vendor.json` 固定的 commit）、`npm run validate` 與 `sync-rules --check`。線上目錄的 `index.json` 已列出這個版本或更新的版本，或以其他金鑰列出這個插件時失敗。 |
+| `sign` | `release` environment、`PLUGIN_SIGNING_KEY` | 以 `umask 077` 把金鑰寫到 `$RUNNER_TEMP`（工作目錄之外），簽章後在一定會執行的步驟刪除金鑰，再執行 `verify --require-signature --fingerprint <publisher.json> --sha256 <印出的值>`，所以被替換的 secret 無法發佈。寫出線上目錄項目。 |
+| `release` | `contents: write` | 再次驗證套件，建立附上套件與 `<套件>.catalog-entry.json` 的 GitHub Release。 |
+| `catalog` | `release` environment、`CATALOG_PR_TOKEN` | 再次驗證套件，放進線上目錄的 `packages/`，以 `scripts/catalog-merge.mjs` 把項目合併進 `index.json`（新版本放在最前面、其他欄位不變、已發佈的版本會被拒絕），執行線上目錄自己的驗證器，推送 `publish/panel-theme-collection-<version>` 並開 pull request。 |
+
+#### 只需設定一次
+
+`release` environment 已建立，只接受符合 `v*` 的 tag（**Settings → Environments → release**）。若每次發佈都要先核准，可在那裡加上 required reviewer。
+
+1. 在 **Settings → Developer settings → Personal access tokens → Fine-grained tokens** 建立 fine-grained personal access token：resource owner 選 `Ponpon55837`，**Only select repositories** 選 `agent-pets-plugins`，repository permissions 設 **Contents: Read and write** 與 **Pull requests: Read and write**（Metadata 唯讀會自動加上），並設定到期日。在線上目錄 repo 保護 `main`，讓這個 token 只能透過 pull request 修改它。
+2. 把兩個 secret 存進 environment。金鑰從檔案經 stdin 讀入，不會出現在 shell 歷史或畫面上；token 由 `gh` 提示輸入。
+
+   ```sh
+   gh secret set PLUGIN_SIGNING_KEY --env release --repo Ponpon55837/agent-pets-theme-plugin < ~/.agent-pets/keys/panel-theme-collection.ed25519.pem
+   gh secret set CATALOG_PR_TOKEN --env release --repo Ponpon55837/agent-pets-theme-plugin
+   ```
+
+請保留金鑰的離線備份。遺失時，使用者必須確認新的指紋，`publisher.json` 與線上目錄項目也都要透過經過審查的 pull request 修改。
+
+#### 本機簽章（緊急時）
+
+在自己的電腦上簽章仍然可行，檢查相同：
+
+```sh
+npm run keygen -- --out ~/.agent-pets/keys/<name>.ed25519.pem        # 只用於建立新金鑰；不會覆寫，權限 0600
+npm run sign -- --key ~/.agent-pets/keys/panel-theme-collection.ed25519.pem
+npm run verify -- --require-signature --fingerprint e78c75d80c8fb08e --sha256 <印出的 sha256> dist/<套件>
+npm run catalog-entry -- dist/<套件>                                  # 印出 index.json 項目
+npm run catalog-merge -- --index <目錄 repo>/index.json --entry <entry.json> --archive <目錄 repo>/packages/<套件>
+```
+
+`--key` 也可以改用 `AGENT_PETS_SIGNING_KEY=<路徑>`。之後手動開線上目錄的 pull request。
 
 ## 新增主題
 
@@ -141,10 +172,14 @@ src/                     套件根目錄（開發者模式載入這個資料夾�
   backgrounds/*.webp
 scripts/
   validate.mjs build.mjs sign.mjs verify.mjs catalog-entry.mjs keygen.mjs sync-rules.mjs
+  release-check.mjs      發佈前檢查：tag 等於版本、版本不在線上目錄中
+  catalog-merge.mjs      把項目加進線上目錄 checkout 的 index.json
   assets/generate.mjs    程式繪製的素材
   lib/rules/app/         原封不動複製的 App 驗證器（固定於 lib/rules/vendor.json）
   lib/rules/             內附驗證器的轉接層
-  lib/                   圖片、套件規則、ZIP、簽章、目錄項目
+  lib/                   圖片、套件規則、ZIP、簽章、目錄項目與合併
+publisher.json           固定的發佈者金鑰指紋
+.github/workflows/       ci.yml（每次推送都測試）、release.yml（簽章與發佈）
 tests/                   node:test
 ```
 
