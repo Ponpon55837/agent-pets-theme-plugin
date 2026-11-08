@@ -19,7 +19,7 @@ const HOMEPAGE = 'https://github.com/Ponpon55837/agent-pets-theme-plugin'
 const PACKAGE_BASE_URL = 'https://raw.githubusercontent.com/Ponpon55837/agent-pets-plugins/main/packages/'
 
 const { options, positionals } = parseArgs(process.argv.slice(2))
-if (!positionals[0]) die('usage: node scripts/catalog-entry.mjs <signed archive> [--published-at <ISO time>]')
+if (positionals.length !== 1) die(positionals.length === 0 ? 'usage: node scripts/catalog-entry.mjs <signed archive> [--published-at <ISO time>]' : `expected exactly one archive path, got ${positionals.length}; usage: node scripts/catalog-entry.mjs <signed archive> [--published-at <ISO time>]`)
 const bytes = readFileSync(positionals[0])
 let files
 try {

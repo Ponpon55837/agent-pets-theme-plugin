@@ -10,7 +10,7 @@ import { formatFingerprint, sha256Hex, verifySignature } from './lib/signature.m
 import { readZip } from './lib/zip.mjs'
 
 const { options, positionals } = parseArgs(process.argv.slice(2))
-if (!positionals[0]) die('usage: node scripts/verify.mjs <archive> [--require-signature]')
+if (positionals.length !== 1) die(positionals.length === 0 ? 'usage: node scripts/verify.mjs <archive> [--require-signature]' : `expected exactly one archive path, got ${positionals.length}; usage: node scripts/verify.mjs <archive> [--require-signature]`)
 const bytes = readFileSync(positionals[0])
 if (bytes.length > PACKAGE_LIMITS.maxTotalBytes) die(`archive is ${bytes.length} bytes > 25 MiB`)
 let files
