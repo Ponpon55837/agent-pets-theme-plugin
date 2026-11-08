@@ -6,25 +6,40 @@
 // the catalog's own form (2-space indent, trailing newline), so the diff only
 // adds lines.
 
+import { readRegularFile } from './files.mjs'
+
+/** The catalog validator's index.json limit. */
+export const CATALOG_MAX_BYTES = 1024 * 1024
 /** The catalog validator's per-plugin cap (CATALOG_MAX_VERSIONS). */
 export const CATALOG_MAX_VERSIONS = 20
+/** The catalog validator reads at most this many characters of a version. */
+const SEMVER_MAX_LENGTH = 100
 
 const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/
+const NUMERIC = /^\d+$/
 const FINGERPRINT = /^[0-9a-f]{16}$/
 const isObject = value => typeof value === 'object' && value !== null && !Array.isArray(value)
 
-/** { core: [major, minor, patch], pre: [identifiers] }, or null when not semver. Build metadata is dropped. */
+/**
+ * { core: [major, minor, patch] as BigInt, pre: [identifiers] }, or null when
+ * not semver (as the catalog validator reads it: at most 100 characters, no
+ * leading zero in a numeric pre-release identifier). Build metadata is dropped.
+ */
 export function parseSemver(version) {
-  const match = typeof version === 'string' ? SEMVER.exec(version) : null
+  const match = typeof version === 'string' && version.length <= SEMVER_MAX_LENGTH ? SEMVER.exec(version) : null
   if (!match) return null
-  return { core: match.slice(1, 4).map(Number), pre: match[4] ? match[4].split('.') : [] }
+  const pre = match[4] ? match[4].split('.') : []
+  if (pre.some(part => NUMERIC.test(part) && part.length > 1 && part.startsWith('0'))) return null
+  return { core: match.slice(1, 4).map(BigInt), pre }
 }
 
+const sign = (a, b) => (a < b ? -1 : a > b ? 1 : 0)
+
 function compareIdentifiers(a, b) {
-  const numeric = [/^\d+$/.test(a), /^\d+$/.test(b)]
-  if (numeric[0] && numeric[1]) return Math.sign(Number(a) - Number(b))
-  if (numeric[0] !== numeric[1]) return numeric[0] ? -1 : 1
-  return a < b ? -1 : a > b ? 1 : 0
+  const [left, right] = [NUMERIC.test(a), NUMERIC.test(b)]
+  if (left && right) return sign(BigInt(a), BigInt(b))
+  if (left !== right) return left ? -1 : 1
+  return sign(a, b)
 }
 
 /** Semver precedence: -1, 0 or 1. Build metadata is ignored, so 1.0.0+x equals 1.0.0. Throws on a non-semver value. */
@@ -32,14 +47,14 @@ export function compareSemver(a, b) {
   const [left, right] = [parseSemver(a), parseSemver(b)]
   if (!left || !right) throw new Error(`not a semver version: ${JSON.stringify(left ? b : a)}`)
   for (let index = 0; index < 3; index += 1) {
-    if (left.core[index] !== right.core[index]) return Math.sign(left.core[index] - right.core[index])
+    if (left.core[index] !== right.core[index]) return sign(left.core[index], right.core[index])
   }
-  if (left.pre.length === 0 || right.pre.length === 0) return Math.sign(right.pre.length - left.pre.length)
+  if (left.pre.length === 0 || right.pre.length === 0) return sign(right.pre.length, left.pre.length)
   for (let index = 0; index < Math.min(left.pre.length, right.pre.length); index += 1) {
     const order = compareIdentifiers(left.pre[index], right.pre[index])
     if (order !== 0) return order
   }
-  return Math.sign(left.pre.length - right.pre.length)
+  return sign(left.pre.length, right.pre.length)
 }
 
 /** The catalog's file form. */
@@ -61,6 +76,11 @@ export function parseIndex(text) {
   if (!isObject(index) || index.schemaVersion !== 1 || !Array.isArray(index.plugins)) throw new Error('index.json needs schemaVersion 1 and a plugins array')
   if (formatIndex(index) !== text) throw new Error('index.json is not in its 2-space, trailing-newline form; rewriting it would change unrelated lines')
   return index
+}
+
+/** Reads and parses an index.json file (bounded, no symbolic link). */
+export function readIndex(path) {
+  return parseIndex(readRegularFile(path, CATALOG_MAX_BYTES, 'index.json').bytes.toString('utf8'))
 }
 
 /** The plugin with `id`, or undefined. Throws when the catalog lists the id more than once. */
@@ -101,9 +121,10 @@ export function mergeCatalogEntry(index, entry) {
   if (!existing) return { index: { ...index, plugins: [...index.plugins, structuredClone(entry)] }, added: 'plugin' }
 
   if (existing.publicKeyFingerprint !== entry.publicKeyFingerprint) {
-    throw new Error(`${entry.id} is listed with key ${existing.publicKeyFingerprint ?? '(none)'}, the archive is signed by ${entry.publicKeyFingerprint}; a key change needs a reviewed pull request`)
+    throw new Error(`${entry.id} is listed with key ${JSON.stringify(existing.publicKeyFingerprint ?? null)}, the archive is signed by ${entry.publicKeyFingerprint}; a key change needs a reviewed pull request`)
   }
   assertVersionIsNew(existing, version.version)
+  if (!Array.isArray(existing.versions)) throw new Error(`${entry.id} has no versions list in index.json`)
   if (existing.versions.length >= CATALOG_MAX_VERSIONS) throw new Error(`${entry.id} already lists ${CATALOG_MAX_VERSIONS} versions, the catalog maximum; remove an old one by hand first`)
   const plugin = { ...existing, versions: [structuredClone(version), ...existing.versions] }
   return { index: { ...index, plugins: index.plugins.map(item => (item === existing ? plugin : item)) }, added: 'version' }

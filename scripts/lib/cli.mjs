@@ -71,7 +71,16 @@ export function cliArgs(spec, usage) {
   }
 }
 
+/**
+ * Text that is safe to print in a GitHub Actions log: carriage returns are
+ * escaped and no line can start a workflow command (`::name::`), so a value
+ * read from a file (a catalog index.json, say) cannot drive the runner.
+ */
+export function logSafe(text) {
+  return String(text).replace(/\r/g, '\\r').replace(/^(\s*):(?=:)/gm, '$1: ')
+}
+
 export function die(message) {
-  console.error(`error: ${message}`)
+  console.error(logSafe(`error: ${message}`))
   process.exit(1)
 }

@@ -1,44 +1,36 @@
 #!/usr/bin/env node
-// Adds a signed archive's catalog entry (catalog-entry.mjs output) to a
-// checkout of the catalog repository's index.json, in place. With --archive
-// the entry must describe exactly those bytes (name, size, sha256). The entry
-// must carry the key pinned in publisher.json. See lib/catalog-merge.mjs for
-// the merge rules.
+// Adds a signed archive to a checkout of the catalog repository's index.json,
+// in place. The entry is built from the archive itself (as catalog-entry.mjs
+// prints it, with the given publishedAt), so no hand-edited or downloaded
+// entry is trusted. The archive must be signed by the key pinned in
+// publisher.json and carry its canonical file name. See lib/catalog-merge.mjs
+// for the merge rules.
 //
-// Usage: node scripts/catalog-merge.mjs --index <index.json> --entry <entry.json> [--archive <archive>]
+// Usage: node scripts/catalog-merge.mjs --index <index.json> --archive <archive> --published-at <ISO time>
 
 import { writeFileSync } from 'node:fs'
 import { basename, resolve } from 'node:path'
-import { formatIndex, mergeCatalogEntry, parseIndex } from './lib/catalog-merge.mjs'
+import { loadArchive } from './lib/archive.mjs'
+import { catalogEntry, parsePublishedAt } from './lib/catalog.mjs'
+import { formatIndex, mergeCatalogEntry, readIndex } from './lib/catalog-merge.mjs'
 import { cliArgs, die } from './lib/cli.mjs'
-import { readRegularFile } from './lib/files.mjs'
-import { PACKAGE_LIMITS } from './lib/package.mjs'
-import { readPublisher } from './lib/release.mjs'
-import { sha256Hex } from './lib/signature.mjs'
+import { readPublisher, releaseFacts } from './lib/release.mjs'
 
-const CATALOG_MAX_BYTES = 1024 * 1024
-const ENTRY_MAX_BYTES = 64 * 1024
-const USAGE = 'node scripts/catalog-merge.mjs --index <index.json> --entry <entry.json> [--archive <archive>]'
-const { options, positionals } = cliArgs({ string: ['index', 'entry', 'archive'] }, USAGE)
-if (!options.index || !options.entry || positionals.length > 0) die(`usage: ${USAGE}`)
+const USAGE = 'node scripts/catalog-merge.mjs --index <index.json> --archive <archive> --published-at <ISO time>'
+const { options, positionals } = cliArgs({ string: ['index', 'archive', 'published-at'] }, USAGE)
+if (!options.index || !options.archive || !options['published-at'] || positionals.length > 0) die(`usage: ${USAGE}`)
+const publishedAt = parsePublishedAt(options['published-at'])
+if (!publishedAt) die('--published-at must be an ISO 8601 date-time such as 2026-11-08T00:00:00Z')
 
 try {
   const indexPath = resolve(options.index)
-  const index = parseIndex(readRegularFile(indexPath, CATALOG_MAX_BYTES, 'index.json').bytes.toString('utf8'))
-  const entry = JSON.parse(readRegularFile(resolve(options.entry), ENTRY_MAX_BYTES, 'the entry').bytes.toString('utf8'))
-  const [version] = entry?.versions ?? []
-  if (options.archive) {
-    const { bytes } = readRegularFile(resolve(options.archive), PACKAGE_LIMITS.maxTotalBytes, 'archive')
-    const name = basename(options.archive)
-    if (typeof version?.url !== 'string' || !version.url.endsWith(`/${name}`)) die(`the entry url does not end with /${name}`)
-    if (version.size !== bytes.length) die(`the entry size ${version.size} differs from the archive (${bytes.length} bytes)`)
-    if (version.sha256 !== sha256Hex(bytes)) die('the entry sha256 differs from the archive')
-  }
-  const { publicKeyFingerprint } = readPublisher()
-  if (entry?.publicKeyFingerprint !== publicKeyFingerprint) die(`the entry is signed by ${entry?.publicKeyFingerprint}, publisher.json pins ${publicKeyFingerprint}`)
-  const merged = mergeCatalogEntry(index, entry)
+  const index = readIndex(indexPath)
+  const archive = loadArchive(resolve(options.archive))
+  const facts = releaseFacts(archive, readPublisher().publicKeyFingerprint)
+  if (basename(options.archive) !== facts.archive) die(`the archive must be named ${facts.archive}, as its catalog URL`)
+  const merged = mergeCatalogEntry(index, catalogEntry(archive, publishedAt))
   writeFileSync(indexPath, formatIndex(merged.index))
-  console.log(`added ${merged.added === 'plugin' ? 'plugin' : 'version'} ${entry.id}@${version.version} to index.json`)
+  console.log(`added ${merged.added} ${facts.id}@${facts.version} to index.json`)
 } catch (error) {
   die(error.message)
 }
