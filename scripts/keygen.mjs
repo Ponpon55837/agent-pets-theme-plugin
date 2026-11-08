@@ -2,8 +2,8 @@
 // Generates an Ed25519 signing key (PKCS#8 PEM). Run once per publisher key.
 // Refuses any --out inside this repository or a git work tree, never
 // overwrites an existing file, and writes the key with mode 0600 in a
-// directory created with mode 0700. Back the key up offline; never commit it
-// or put it in CI.
+// directory created with mode 0700. Back the key up offline and never commit
+// it; CI gets it only as the release environment's PLUGIN_SIGNING_KEY secret.
 //
 // Usage: node scripts/keygen.mjs --out ~/.agent-pets/keys/panel-theme-collection.ed25519.pem
 
