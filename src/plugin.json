@@ -116,7 +116,8 @@
               "sageDark": "#cddcbf",
               "dangerText": "#f5b3b9",
               "successText": "#acd49a",
-              "warnText": "#f0d08a"
+              "warnText": "#f0d08a",
+              "infoText": "#a9bff5"
             },
             "background": {
               "type": "gradient",

@@ -170,7 +170,7 @@ describe('command-line scripts', () => {
     writeFileSync(join(broken, 'plugin.json'), JSON.stringify(manifest))
     const result = node('scripts/validate.mjs', [broken])
     assert.equal(result.status, 1)
-    assert.match(result.stderr, /sakura\]\.modes\.light\.colors\.textMuted/)
+    assert.match(result.stderr, /error: sakura\.light\.colors\.textMuted: /)
     assert.equal(node('scripts/validate.mjs', []).status, 0)
   })
 })

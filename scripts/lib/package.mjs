@@ -5,7 +5,7 @@
 import { lstatSync, readdirSync, readFileSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
 import { checkFont, checkPackagedImage } from './images.mjs'
-import { normalizeRelativePath, parseLocalizedText, validatePanelThemes } from './rules/panel-themes.mjs'
+import { appImageProblem, normalizeRelativePath, parseLocalizedText, validatePanelThemes } from './rules/panel-themes.mjs'
 import { SIGNATURE_FILE } from './signature.mjs'
 
 export const PACKAGE_LIMITS = Object.freeze({
@@ -107,10 +107,9 @@ export function validatePackage(files, { allowSignature = false } = {}) {
 
   const themeResult = validatePanelThemes(manifest.contributes?.panelThemes)
   errors.push(...themeResult.errors)
-  warnings.push(...themeResult.warnings)
 
-  const images = new Set(themeResult.images ?? [])
-  const fonts = new Set(themeResult.fontFiles ?? [])
+  const images = new Set(themeResult.images)
+  const fonts = new Set(themeResult.fontFiles)
   const icon = typeof manifest.icon === 'string' ? normalizeRelativePath(manifest.icon, ['.png', '.webp']) : null
   const referenced = new Set(['plugin.json', ...images, ...fonts])
   if (icon) referenced.add(icon)
@@ -121,7 +120,11 @@ export function validatePackage(files, { allowSignature = false } = {}) {
       errors.push(`${path}: referenced but missing from the package`)
       continue
     }
-    for (const problem of checkPackagedImage(bytes, extensionOf(path)).problems) errors.push(`${path}: ${problem}`)
+    const { problems } = checkPackagedImage(bytes, extensionOf(path))
+    for (const problem of problems) errors.push(`${path}: ${problem}`)
+    // The app's own header check is the verdict; the lines above only explain it.
+    const appProblem = problems.length === 0 && images.has(path) ? appImageProblem(bytes) : null
+    if (appProblem) errors.push(`${path}: rejected by the app's image check (${appProblem})`)
   }
   for (const path of fonts) {
     const bytes = files.get(path)
@@ -145,21 +148,16 @@ export function validatePackage(files, { allowSignature = false } = {}) {
   return { ok: errors.length === 0, errors, warnings, manifest, themes: themeResult.themes, totalBytes, fileCount: files.size }
 }
 
-/** Human-readable contrast summary lines for a validation result. */
+/** Human-readable per-theme, per-mode summary lines for a validation result. */
 export function describeThemes(result) {
   const lines = []
   for (const theme of result.themes) {
     lines.push(`${theme.id}  scale ${theme.scale}  radii ${theme.radii.radiusSm}/${theme.radii.radiusMd}/${theme.radii.radiusLg}`)
     for (const [mode, report] of Object.entries(theme.modes)) {
-      if (!report) continue
-      const parts = [
-        `  ${mode.padEnd(5)} ${report.background.type.padEnd(8)}`,
-        `bg L ${report.bgLuminance.toFixed(3)}`,
-        `min text ${report.worstText.ratio.toFixed(2)} (${report.worstText.fg} on ${report.worstText.bg})`,
-        `min UI ${report.worstUi.ratio.toFixed(2)} (${report.worstUi.fg} on ${report.worstUi.bg})`,
-      ]
-      if (report.imageMinOverlay !== undefined) parts.push(`image overlay ${report.background.overlay.opacity} (min ${report.imageMinOverlay})`)
-      if (report.userImageMinOverlay !== undefined) parts.push(`user image overlay ${report.userImage.overlay.opacity} (min ${report.userImageMinOverlay})`)
+      const parts = [`  ${mode.padEnd(5)} ${report.background.padEnd(8)}`, `bg L ${report.bgLuminance.toFixed(3)}`, `pet pill ${report.petStatus ? 'themed' : 'derived'}`]
+      if (report.imageOverlay) parts.push(`image overlay ${report.imageOverlay.declared} (min ${report.imageOverlay.minimum?.toFixed(2)})`)
+      if (report.userImageOverlay) parts.push(`user image dim ${report.userImageOverlay.declared} (min ${report.userImageOverlay.minimum.toFixed(2)})`)
+      if (report.deprecated) parts.push(`ignored: ${report.deprecated.join(', ')}`)
       lines.push(parts.join('  '))
     }
   }
