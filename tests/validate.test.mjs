@@ -77,10 +77,13 @@ describe('panel theme rules (vendored app validator)', () => {
     assert.deepEqual(errorsOf([theme]), [])
   })
 
-  it('ships five themes, each with light and dark sets, that the app accepts', () => {
+  it('ships five themes, each with light, dark and pet pill colours, that the app accepts', () => {
     const themes = loadManifest().contributes.panelThemes
     assert.deepEqual(themes.map(theme => theme.id), ['sakura', 'nord-frost', 'matcha-paper', 'midnight-terminal', 'dune-dusk'])
-    for (const theme of themes) assert.deepEqual(Object.keys(theme.modes).sort(), ['dark', 'light'], theme.id)
+    for (const theme of themes) {
+      assert.deepEqual(Object.keys(theme.modes).sort(), ['dark', 'light'], theme.id)
+      for (const mode of Object.values(theme.modes)) assert.ok(mode.petStatus, theme.id)
+    }
     assert.equal(appVerdict(themes), null)
     const result = validatePanelThemes(themes)
     assert.deepEqual(result.errors, [])

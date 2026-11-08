@@ -44,7 +44,16 @@
               "blur": 0,
               "overlay": { "color": "#fbf1f3", "opacity": 0.84 }
             },
-            "userImage": { "allowed": true, "fit": "cover", "overlay": { "color": "#fbf1f3", "opacity": 0.86 } }
+            "userImage": { "allowed": true, "fit": "cover", "overlay": { "color": "#fbf1f3", "opacity": 0.86 } },
+            "petStatus": {
+              "background": "rgb(255 250 251 / 0.92)",
+              "border": "rgb(180 68 106 / 0.22)",
+              "text": "#2a1d22",
+              "textMuted": "#54404a",
+              "quotaFill": "#b4446a",
+              "quotaTrack": "rgb(42 29 34 / 0.12)",
+              "quotaWarn": "#a35f00"
+            }
           },
           "dark": {
             "colors": {
@@ -68,7 +77,16 @@
               "angle": 160,
               "stops": [{ "color": "#1c1418", "at": 0 }, { "color": "#2a1824", "at": 100 }]
             },
-            "userImage": { "allowed": true, "overlay": { "color": "#1c1418", "opacity": 0.82 } }
+            "userImage": { "allowed": true, "overlay": { "color": "#1c1418", "opacity": 0.82 } },
+            "petStatus": {
+              "background": "rgb(38 27 33 / 0.92)",
+              "border": "rgb(224 122 156 / 0.28)",
+              "text": "#f6e9ee",
+              "textMuted": "#d7c3cc",
+              "quotaFill": "#e98aaa",
+              "quotaTrack": "rgb(246 233 238 / 0.16)",
+              "quotaWarn": "#f2c76b"
+            }
           }
         }
       },
@@ -97,6 +115,15 @@
               "dangerText": "#a3303a",
               "successText": "#3d5f2a",
               "warnText": "#7a5300"
+            },
+            "petStatus": {
+              "background": "rgb(248 249 251 / 0.92)",
+              "border": "rgb(94 129 172 / 0.24)",
+              "text": "#2e3440",
+              "textMuted": "#4c566a",
+              "quotaFill": "#4c6f9c",
+              "quotaTrack": "rgb(46 52 64 / 0.12)",
+              "quotaWarn": "#8f6200"
             }
           },
           "dark": {
@@ -124,6 +151,15 @@
               "kind": "radial",
               "position": "top",
               "stops": [{ "color": "#353c4a", "at": 0 }, { "color": "#2e3440", "at": 70 }]
+            },
+            "petStatus": {
+              "background": "rgb(53 60 74 / 0.94)",
+              "border": "rgb(136 192 208 / 0.28)",
+              "text": "#eceff4",
+              "textMuted": "#d8dee9",
+              "quotaFill": "#88c0d0",
+              "quotaTrack": "rgb(236 239 244 / 0.14)",
+              "quotaWarn": "#ebcb8b"
             }
           }
         }
@@ -165,6 +201,15 @@
               "position": "center",
               "opacity": 0.6,
               "overlay": { "color": "#f3efe2", "opacity": 0.66 }
+            },
+            "petStatus": {
+              "background": "rgb(251 248 239 / 0.92)",
+              "border": "rgb(76 106 43 / 0.24)",
+              "text": "#1f2a1c",
+              "textMuted": "#34412e",
+              "quotaFill": "#4c6a2b",
+              "quotaTrack": "rgb(31 42 28 / 0.12)",
+              "quotaWarn": "#8a5a00"
             }
           },
           "dark": {
@@ -185,6 +230,15 @@
               "dangerText": "#ff9f90",
               "successText": "#bcd99a",
               "warnText": "#f0c062"
+            },
+            "petStatus": {
+              "background": "rgb(28 38 28 / 0.92)",
+              "border": "rgb(156 192 105 / 0.26)",
+              "text": "#eef2e6",
+              "textMuted": "#cdd6c2",
+              "quotaFill": "#9cc069",
+              "quotaTrack": "rgb(238 242 230 / 0.16)",
+              "quotaWarn": "#f0c062"
             }
           }
         }
@@ -214,6 +268,15 @@
               "dangerText": "#9f1c12",
               "successText": "#235c1b",
               "warnText": "#6b4700"
+            },
+            "petStatus": {
+              "background": "rgb(255 255 255 / 0.94)",
+              "border": "rgb(11 15 18 / 0.28)",
+              "text": "#0b0f12",
+              "textMuted": "#263238",
+              "quotaFill": "#0f766e",
+              "quotaTrack": "rgb(11 15 18 / 0.14)",
+              "quotaWarn": "#8a5c00"
             }
           },
           "dark": {
@@ -241,7 +304,16 @@
               "angle": 180,
               "stops": [{ "color": "#0b0f12", "at": 0 }, { "color": "#0c1518", "at": 60 }, { "color": "#0f1c1f", "at": 100 }]
             },
-            "userImage": { "allowed": true, "fit": "cover", "overlay": { "color": "#0b0f12", "opacity": 0.85 } }
+            "userImage": { "allowed": true, "fit": "cover", "overlay": { "color": "#0b0f12", "opacity": 0.85 } },
+            "petStatus": {
+              "background": "rgb(11 15 18 / 0.9)",
+              "border": "rgb(45 212 191 / 0.32)",
+              "text": "#e6f1ef",
+              "textMuted": "#b9cbc8",
+              "quotaFill": "#2dd4bf",
+              "quotaTrack": "rgb(230 241 239 / 0.16)",
+              "quotaWarn": "#f5cf6a"
+            }
           }
         }
       },
@@ -279,7 +351,16 @@
               "position": "bottom",
               "overlay": { "color": "#f6ece0", "opacity": 0.84 }
             },
-            "userImage": { "allowed": true, "fit": "cover", "overlay": { "color": "#f6ece0", "opacity": 0.86 } }
+            "userImage": { "allowed": true, "fit": "cover", "overlay": { "color": "#f6ece0", "opacity": 0.86 } },
+            "petStatus": {
+              "background": "rgb(255 250 243 / 0.92)",
+              "border": "rgb(173 72 32 / 0.22)",
+              "text": "#2b1d12",
+              "textMuted": "#563f2d",
+              "quotaFill": "#ad4820",
+              "quotaTrack": "rgb(43 29 18 / 0.12)",
+              "quotaWarn": "#8c6400"
+            }
           },
           "dark": {
             "colors": {
@@ -304,7 +385,16 @@
               "position": "bottom",
               "overlay": { "color": "#15121c", "opacity": 0.8 }
             },
-            "userImage": { "allowed": true, "fit": "cover", "overlay": { "color": "#15121c", "opacity": 0.84 } }
+            "userImage": { "allowed": true, "fit": "cover", "overlay": { "color": "#15121c", "opacity": 0.84 } },
+            "petStatus": {
+              "background": "rgb(30 26 39 / 0.92)",
+              "border": "rgb(224 138 90 / 0.28)",
+              "text": "#f3ece4",
+              "textMuted": "#d5c8bb",
+              "quotaFill": "#e08a5a",
+              "quotaTrack": "rgb(243 236 228 / 0.16)",
+              "quotaWarn": "#f1c868"
+            }
           }
         }
       }
