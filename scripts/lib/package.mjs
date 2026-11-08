@@ -21,6 +21,8 @@ const PLUGIN_ID = /^(?!_host$|_shared$)[a-z0-9-]{3,48}$/
 const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/
 const ROOT_KEYS = ['id', 'name', 'version', 'apiVersion', 'author', 'entry', 'icon', 'permissions', 'contributes']
 
+const UTF8 = new TextDecoder('utf-8', { fatal: true })
+
 const isRecord = value => typeof value === 'object' && value !== null && !Array.isArray(value)
 const extensionOf = path => {
   const dot = path.lastIndexOf('.')
@@ -73,8 +75,13 @@ export function validatePackage(files, { allowSignature = false } = {}) {
   const errors = []
   const warnings = []
   let totalBytes = 0
+  const seen = new Map()
   for (const [path, bytes] of files) {
     totalBytes += bytes.length
+    if (path.normalize('NFC') !== path) errors.push(`${JSON.stringify(path)}: path must be in Unicode NFC form`)
+    const key = path.normalize('NFC').toLowerCase()
+    if (seen.has(key)) errors.push(`${path}: duplicates ${seen.get(key)} (paths are compared case-insensitively)`)
+    else seen.set(key, path)
     if (path === SIGNATURE_FILE) {
       if (!allowSignature) errors.push(`${path}: remove it from src/; npm run sign adds it to the archive`)
       continue
@@ -91,9 +98,9 @@ export function validatePackage(files, { allowSignature = false } = {}) {
   if (manifestBytes.length > PACKAGE_LIMITS.maxManifestBytes) errors.push('plugin.json: larger than 256 KB')
   let manifest
   try {
-    manifest = JSON.parse(Buffer.from(manifestBytes).toString('utf8'))
+    manifest = JSON.parse(UTF8.decode(manifestBytes))
   } catch (error) {
-    return { ok: false, errors: [...errors, `plugin.json: invalid JSON (${error.message})`], warnings, themes: [], totalBytes, fileCount: files.size }
+    return { ok: false, errors: [...errors, `plugin.json: invalid UTF-8 JSON (${error.message})`], warnings, themes: [], totalBytes, fileCount: files.size }
   }
   if (!isRecord(manifest)) return { ok: false, errors: [...errors, 'plugin.json: must be an object'], warnings, themes: [], totalBytes, fileCount: files.size }
   checkManifestRoot(manifest, errors)
@@ -127,9 +134,9 @@ export function validatePackage(files, { allowSignature = false } = {}) {
     if ((extension === '.png' || extension === '.webp') && !referenced.has(path)) warnings.push(`${path}: image is not referenced by the manifest`)
     if (extension === '.json' && path !== 'plugin.json' && path !== SIGNATURE_FILE) {
       try {
-        JSON.parse(Buffer.from(bytes).toString('utf8'))
+        JSON.parse(UTF8.decode(bytes))
       } catch {
-        errors.push(`${path}: invalid JSON`)
+        errors.push(`${path}: invalid UTF-8 JSON`)
       }
     }
     if (!['.png', '.webp', '.woff2'].includes(extension) && bytes.length > PACKAGE_LIMITS.maxOtherFileBytes) errors.push(`${path}: larger than 5 MiB`)

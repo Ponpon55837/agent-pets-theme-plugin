@@ -281,7 +281,7 @@ describe('package rules', () => {
       [packageWith(manifest, { add: { 'main.js': 'x' } }), /main\.js: not allowed/],
       [packageWith(manifest, { add: { 'signature.json': '{}' } }), /signature\.json: remove it from src/],
       [packageWith(manifest, { add: { 'backgrounds/dune-dark.webp': fakePng(100, 100) } }), /content is PNG but the extension is \.webp/],
-      [packageWith(manifest, { add: { 'bad.json': '{' } }), /bad\.json: invalid JSON/],
+      [packageWith(manifest, { add: { 'bad.json': '{' } }), /bad\.json: invalid UTF-8 JSON/],
     ]
     for (const [files, pattern] of cases) {
       const result = validatePackage(files)
