@@ -1,0 +1,403 @@
+{
+  "id": "panel-theme-collection",
+  "name": { "zh-TW": "面板主題合集", "en-US": "Panel Theme Collection" },
+  "version": "1.0.0",
+  "apiVersion": "1",
+  "author": "Ponpon55837",
+  "icon": "assets/icon.png",
+  "permissions": {},
+  "contributes": {
+    "panelThemes": [
+      {
+        "id": "sakura",
+        "displayName": { "zh-TW": "櫻花", "en-US": "Sakura" },
+        "description": { "zh-TW": "白天是淡粉色水彩花瓣，夜晚是深梅色漸層。", "en-US": "Soft watercolour petals by day, a deep plum gradient at night." },
+        "typography": {
+          "body": ["PingFang TC", "Microsoft JhengHei", "system-ui", "sans-serif"],
+          "heading": ["ui-rounded", "Hiragino Maru Gothic ProN", "PingFang TC", "system-ui", "sans-serif"],
+          "scale": 1
+        },
+        "shape": { "radiusSm": 8, "radiusMd": 14, "radiusLg": 24 },
+        "modes": {
+          "light": {
+            "colors": {
+              "bg": "#fbf1f3",
+              "surface": "#fffafb",
+              "surface2": "#f6e6ea",
+              "text": "#2a1d22",
+              "textSecondary": "#54404a",
+              "textMuted": "#5e4a54",
+              "accent": "#b4446a",
+              "accentText": "#852a4b",
+              "onAccent": "#ffffff",
+              "border": "rgb(42 29 34 / 0.16)",
+              "dangerText": "#a3261c",
+              "successText": "#3b5a1e",
+              "warnText": "#7a4f00"
+            },
+            "background": {
+              "type": "image",
+              "src": "backgrounds/sakura-light.webp",
+              "fit": "cover",
+              "position": "top-right",
+              "opacity": 1,
+              "blur": 0,
+              "overlay": { "color": "#fbf1f3", "opacity": 0.84 }
+            },
+            "userImage": { "allowed": true, "fit": "cover", "overlay": { "color": "#fbf1f3", "opacity": 0.86 } },
+            "petStatus": {
+              "background": "rgb(255 250 251 / 0.92)",
+              "border": "rgb(180 68 106 / 0.22)",
+              "text": "#2a1d22",
+              "textMuted": "#54404a",
+              "quotaFill": "#b4446a",
+              "quotaTrack": "rgb(42 29 34 / 0.12)",
+              "quotaWarn": "#a35f00"
+            }
+          },
+          "dark": {
+            "colors": {
+              "bg": "#1c1418",
+              "surface": "#261b21",
+              "surface2": "#31242b",
+              "text": "#f6e9ee",
+              "textSecondary": "#d7c3cc",
+              "textMuted": "#c4afb8",
+              "accent": "#e07a9c",
+              "accentText": "#f2a7c0",
+              "onAccent": "#1c1418",
+              "border": "rgb(246 233 238 / 0.18)",
+              "dangerText": "#ff9e92",
+              "successText": "#b8d68f",
+              "warnText": "#f2c76b"
+            },
+            "background": {
+              "type": "gradient",
+              "kind": "linear",
+              "angle": 160,
+              "stops": [{ "color": "#1c1418", "at": 0 }, { "color": "#2a1824", "at": 100 }]
+            },
+            "userImage": { "allowed": true, "overlay": { "color": "#1c1418", "opacity": 0.82 } },
+            "petStatus": {
+              "background": "rgb(38 27 33 / 0.92)",
+              "border": "rgb(224 122 156 / 0.28)",
+              "text": "#f6e9ee",
+              "textMuted": "#d7c3cc",
+              "quotaFill": "#e98aaa",
+              "quotaTrack": "rgb(246 233 238 / 0.16)",
+              "quotaWarn": "#f2c76b"
+            }
+          }
+        }
+      },
+      {
+        "id": "nord-frost",
+        "displayName": { "zh-TW": "北境霜藍", "en-US": "Nord Frost" },
+        "description": { "zh-TW": "冷靜的北極藍灰色調，只用系統字型，沒有圖片。", "en-US": "Calm arctic blue-greys with system fonts and no images." },
+        "typography": { "body": ["system-ui", "sans-serif"], "heading": ["system-ui", "sans-serif"] },
+        "shape": { "radiusSm": 6, "radiusMd": 10, "radiusLg": 16 },
+        "modes": {
+          "light": {
+            "colors": {
+              "bg": "#eceff4",
+              "surface": "#f8f9fb",
+              "surface2": "#e3e8f0",
+              "text": "#2e3440",
+              "textSecondary": "#3b4252",
+              "textMuted": "#4c566a",
+              "accent": "#5e81ac",
+              "accentText": "#3c608c",
+              "onAccent": "#ffffff",
+              "border": "rgb(46 52 64 / 0.16)",
+              "sage": "#7d9a6a",
+              "sageDeep": "#526d3c",
+              "sageDark": "#3d5230",
+              "dangerText": "#a3303a",
+              "successText": "#3d5f2a",
+              "warnText": "#7a5300"
+            },
+            "petStatus": {
+              "background": "rgb(248 249 251 / 0.92)",
+              "border": "rgb(94 129 172 / 0.24)",
+              "text": "#2e3440",
+              "textMuted": "#4c566a",
+              "quotaFill": "#4c6f9c",
+              "quotaTrack": "rgb(46 52 64 / 0.12)",
+              "quotaWarn": "#8f6200"
+            }
+          },
+          "dark": {
+            "colors": {
+              "bg": "#2e3440",
+              "surface": "#353c4a",
+              "surface2": "#3b4252",
+              "text": "#eceff4",
+              "textSecondary": "#d8dee9",
+              "textMuted": "#c0c8d6",
+              "accent": "#88c0d0",
+              "accentText": "#a8dfec",
+              "onAccent": "#2e3440",
+              "border": "rgb(236 239 244 / 0.18)",
+              "sage": "#a3be8c",
+              "sageDeep": "#b4cc9f",
+              "sageDark": "#cddcbf",
+              "dangerText": "#f5b3b9",
+              "successText": "#acd49a",
+              "warnText": "#f0d08a",
+              "infoText": "#a9bff5"
+            },
+            "background": {
+              "type": "gradient",
+              "kind": "radial",
+              "position": "top",
+              "stops": [{ "color": "#353c4a", "at": 0 }, { "color": "#2e3440", "at": 70 }]
+            },
+            "petStatus": {
+              "background": "rgb(53 60 74 / 0.94)",
+              "border": "rgb(136 192 208 / 0.28)",
+              "text": "#eceff4",
+              "textMuted": "#d8dee9",
+              "quotaFill": "#88c0d0",
+              "quotaTrack": "rgb(236 239 244 / 0.14)",
+              "quotaWarn": "#ebcb8b"
+            }
+          }
+        }
+      },
+      {
+        "id": "matcha-paper",
+        "displayName": { "zh-TW": "抹茶和紙", "en-US": "Matcha Paper" },
+        "description": { "zh-TW": "白天是米色和紙紋理，夜晚是深抹茶綠，標題使用襯線字。", "en-US": "Cream washi texture by day, deep matcha green at night, serif headings." },
+        "typography": {
+          "body": ["system-ui", "PingFang TC", "Microsoft JhengHei", "sans-serif"],
+          "heading": ["ui-serif", "Georgia", "Songti TC", "serif"],
+          "scale": 1.05
+        },
+        "shape": { "radiusSm": 4, "radiusMd": 8, "radiusLg": 12 },
+        "modes": {
+          "light": {
+            "colors": {
+              "bg": "#f3efe2",
+              "surface": "#fbf8ef",
+              "surface2": "#ece6d4",
+              "text": "#1f2a1c",
+              "textSecondary": "#34412e",
+              "textMuted": "#414d3a",
+              "accent": "#4c6a2b",
+              "accentText": "#38511f",
+              "onAccent": "#ffffff",
+              "border": "rgb(31 42 28 / 0.18)",
+              "sage": "#6f8a52",
+              "sageDeep": "#4f6838",
+              "sageDark": "#384b27",
+              "dangerText": "#a02f1f",
+              "successText": "#365a1c",
+              "warnText": "#734e00"
+            },
+            "background": {
+              "type": "image",
+              "src": "backgrounds/matcha-paper.webp",
+              "fit": "tile",
+              "position": "center",
+              "opacity": 0.6,
+              "overlay": { "color": "#f3efe2", "opacity": 0.66 }
+            },
+            "petStatus": {
+              "background": "rgb(251 248 239 / 0.92)",
+              "border": "rgb(76 106 43 / 0.24)",
+              "text": "#1f2a1c",
+              "textMuted": "#34412e",
+              "quotaFill": "#4c6a2b",
+              "quotaTrack": "rgb(31 42 28 / 0.12)",
+              "quotaWarn": "#8a5a00"
+            }
+          },
+          "dark": {
+            "colors": {
+              "bg": "#141c14",
+              "surface": "#1c261c",
+              "surface2": "#253225",
+              "text": "#eef2e6",
+              "textSecondary": "#cdd6c2",
+              "textMuted": "#aab79f",
+              "accent": "#9cc069",
+              "accentText": "#b5d48a",
+              "onAccent": "#141c14",
+              "border": "rgb(238 242 230 / 0.18)",
+              "sage": "#9cb784",
+              "sageDeep": "#b0c79b",
+              "sageDark": "#c9d9b8",
+              "dangerText": "#ff9f90",
+              "successText": "#bcd99a",
+              "warnText": "#f0c062"
+            },
+            "petStatus": {
+              "background": "rgb(28 38 28 / 0.92)",
+              "border": "rgb(156 192 105 / 0.26)",
+              "text": "#eef2e6",
+              "textMuted": "#cdd6c2",
+              "quotaFill": "#9cc069",
+              "quotaTrack": "rgb(238 242 230 / 0.16)",
+              "quotaWarn": "#f0c062"
+            }
+          }
+        }
+      },
+      {
+        "id": "midnight-terminal",
+        "displayName": { "zh-TW": "午夜終端機", "en-US": "Midnight Terminal" },
+        "description": { "zh-TW": "近黑色漸層配青綠色強調與等寬標題；淺色版是高對比白紙。可在深色模式匯入自己的背景圖。", "en-US": "Near-black with a teal accent and monospace headings; the light set is high-contrast paper. Own image in dark mode." },
+        "typography": {
+          "body": ["system-ui", "PingFang TC", "Microsoft JhengHei", "sans-serif"],
+          "heading": ["ui-monospace", "Menlo", "Consolas", "monospace"]
+        },
+        "shape": { "radiusSm": 2, "radiusMd": 4, "radiusLg": 8 },
+        "modes": {
+          "light": {
+            "colors": {
+              "bg": "#f7f7f2",
+              "surface": "#ffffff",
+              "surface2": "#ecece4",
+              "text": "#0b0f12",
+              "textSecondary": "#263238",
+              "textMuted": "#3d4a4f",
+              "accent": "#0f766e",
+              "accentText": "#0b5f58",
+              "onAccent": "#ffffff",
+              "border": "rgb(11 15 18 / 0.28)",
+              "dangerText": "#9f1c12",
+              "successText": "#235c1b",
+              "warnText": "#6b4700"
+            },
+            "petStatus": {
+              "background": "rgb(255 255 255 / 0.94)",
+              "border": "rgb(11 15 18 / 0.28)",
+              "text": "#0b0f12",
+              "textMuted": "#263238",
+              "quotaFill": "#0f766e",
+              "quotaTrack": "rgb(11 15 18 / 0.14)",
+              "quotaWarn": "#8a5c00"
+            }
+          },
+          "dark": {
+            "colors": {
+              "bg": "#0b0f12",
+              "surface": "#12181c",
+              "surface2": "#1a2227",
+              "text": "#e6f1ef",
+              "textSecondary": "#b9cbc8",
+              "textMuted": "#93aaa6",
+              "accent": "#2dd4bf",
+              "accentText": "#5eead4",
+              "onAccent": "#0b0f12",
+              "border": "rgb(230 241 239 / 0.16)",
+              "sage": "#8fbf8a",
+              "sageDeep": "#a6cf9f",
+              "sageDark": "#c2e0bb",
+              "dangerText": "#ff8f86",
+              "successText": "#8fe0a0",
+              "warnText": "#f5cf6a"
+            },
+            "background": {
+              "type": "gradient",
+              "kind": "linear",
+              "angle": 180,
+              "stops": [{ "color": "#0b0f12", "at": 0 }, { "color": "#0c1518", "at": 60 }, { "color": "#0f1c1f", "at": 100 }]
+            },
+            "userImage": { "allowed": true, "fit": "cover", "overlay": { "color": "#0b0f12", "opacity": 0.85 } },
+            "petStatus": {
+              "background": "rgb(11 15 18 / 0.9)",
+              "border": "rgb(45 212 191 / 0.32)",
+              "text": "#e6f1ef",
+              "textMuted": "#b9cbc8",
+              "quotaFill": "#2dd4bf",
+              "quotaTrack": "rgb(230 241 239 / 0.16)",
+              "quotaWarn": "#f5cf6a"
+            }
+          }
+        }
+      },
+      {
+        "id": "dune-dusk",
+        "displayName": { "zh-TW": "沙丘暮色", "en-US": "Dune Dusk" },
+        "description": { "zh-TW": "白天是夕陽下的沙丘，夜晚是星空下的沙丘；兩種模式都可換成自己的圖片。", "en-US": "Sunset dunes by day, starlit dunes at night; both modes accept your own image." },
+        "typography": {
+          "body": ["system-ui", "PingFang TC", "Microsoft JhengHei", "sans-serif"],
+          "heading": ["Avenir Next", "Segoe UI", "PingFang TC", "system-ui", "sans-serif"],
+          "scale": 1.02
+        },
+        "shape": { "radiusSm": 10, "radiusMd": 16, "radiusLg": 26 },
+        "modes": {
+          "light": {
+            "colors": {
+              "bg": "#f6ece0",
+              "surface": "#fffaf3",
+              "surface2": "#f1e3d1",
+              "text": "#2b1d12",
+              "textSecondary": "#563f2d",
+              "textMuted": "#654d3a",
+              "accent": "#ad4820",
+              "accentText": "#843410",
+              "onAccent": "#ffffff",
+              "border": "rgb(43 29 18 / 0.16)",
+              "dangerText": "#a3261c",
+              "successText": "#3d5a1c",
+              "warnText": "#744c00"
+            },
+            "background": {
+              "type": "image",
+              "src": "backgrounds/dune-light.webp",
+              "fit": "cover",
+              "position": "bottom",
+              "overlay": { "color": "#f6ece0", "opacity": 0.84 }
+            },
+            "userImage": { "allowed": true, "fit": "cover", "overlay": { "color": "#f6ece0", "opacity": 0.86 } },
+            "petStatus": {
+              "background": "rgb(255 250 243 / 0.92)",
+              "border": "rgb(173 72 32 / 0.22)",
+              "text": "#2b1d12",
+              "textMuted": "#563f2d",
+              "quotaFill": "#ad4820",
+              "quotaTrack": "rgb(43 29 18 / 0.12)",
+              "quotaWarn": "#8c6400"
+            }
+          },
+          "dark": {
+            "colors": {
+              "bg": "#15121c",
+              "surface": "#1e1a27",
+              "surface2": "#282233",
+              "text": "#f3ece4",
+              "textSecondary": "#d5c8bb",
+              "textMuted": "#c4b6a9",
+              "accent": "#e08a5a",
+              "accentText": "#f2b58f",
+              "onAccent": "#15121c",
+              "border": "rgb(243 236 228 / 0.18)",
+              "dangerText": "#ff9c8c",
+              "successText": "#b7d58c",
+              "warnText": "#f1c868"
+            },
+            "background": {
+              "type": "image",
+              "src": "backgrounds/dune-dark.webp",
+              "fit": "cover",
+              "position": "bottom",
+              "overlay": { "color": "#15121c", "opacity": 0.8 }
+            },
+            "userImage": { "allowed": true, "fit": "cover", "overlay": { "color": "#15121c", "opacity": 0.84 } },
+            "petStatus": {
+              "background": "rgb(30 26 39 / 0.92)",
+              "border": "rgb(224 138 90 / 0.28)",
+              "text": "#f3ece4",
+              "textMuted": "#d5c8bb",
+              "quotaFill": "#e08a5a",
+              "quotaTrack": "rgb(243 236 228 / 0.16)",
+              "quotaWarn": "#f1c868"
+            }
+          }
+        }
+      }
+    ]
+  }
+}

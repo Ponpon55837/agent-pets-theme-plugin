@@ -1,2 +1,7 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+# Normalise text to LF everywhere so Windows checkouts produce the same bytes
+# (and the same package SHA-256) as macOS and Linux.
+* text=auto eol=lf
+*.png binary
+*.webp binary
+*.woff2 binary
+*.agentpet-plugin binary

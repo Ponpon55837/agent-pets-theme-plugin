@@ -1,0 +1,19 @@
+# Build output
+dist/
+*.agentpet-plugin
+
+# Signing keys and secrets: never commit these
+*.pem
+*.key
+*.der
+*.p8
+*.p12
+keys/
+signature.json
+.env
+.env.*
+
+# Tooling
+node_modules/
+.DS_Store
+*.log
