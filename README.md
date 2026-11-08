@@ -18,12 +18,12 @@ There are no screenshots yet; each theme is described below.
 | **Midnight Terminal** | High-contrast white paper with a dark teal accent | Near-black vertical gradient with a bright teal accent | Dark only | Monospace headings, radii 2/4/8 |
 | **Dune Dusk** | Sunset sky and layered sand dunes under a warm overlay | Starlit night with a crescent moon over violet dunes | Light and dark | Avenir Next / Segoe UI headings, 2% larger text, radii 10/16/26 |
 
-Every mode passes the full 1.12.0 contrast matrix, and every mode sets its own pet status pill colours. `npm run validate` prints each mode's background, the declared image overlay and user-image dim next to the computed minimum, and whether the pill is themed.
+Every mode passes the full 1.12.0 contrast matrix, and every mode sets its own pet status pill colours. `pnpm validate` prints each mode's background, the declared image overlay and user-image dim next to the computed minimum, and whether the pill is themed.
 
 ## Requirements
 
 - Agent Pets **1.12.0 or later**. The catalog entry sets `"minAppVersion": "1.12.0"`, so older apps do not list the plugin; installing it or loading the folder in an older app fails with “The plugin archive or manifest is invalid.”
-- Node.js 22.18 or later, only to validate, build or sign the package (the vendored app validator is TypeScript run through Node's built-in type stripping). There are no npm dependencies.
+- Node.js 22.18 or later, only to validate, build or sign the package (every script is TypeScript run through Node's built-in type stripping). [pnpm](https://pnpm.io) installs the only dependencies, TypeScript and Node types, which are used by `pnpm typecheck` and never at run time.
 
 ## Install
 
@@ -57,16 +57,18 @@ For a theme that allows your own image (Sakura and Dune Dusk in both modes, Midn
 ## Build, sign and verify
 
 ```sh
-npm test                 # node:test suite for the validator, archive and signing
-npm run validate         # check src/ and print each theme's contrast summary
-npm run build            # unsigned archive: dist/unsigned/panel-theme-collection-<version>.agentpet-plugin
-npm run verify -- [--require-signature] [--fingerprint <hex>] [--sha256 <hex>] <archive>   # one archive path; flags in any position
-npm run sync-rules       # check the vendored validator against vendor.json
+pnpm install       # install TypeScript for the type check (the scripts themselves need no packages)
+pnpm typecheck     # tsc --noEmit over scripts/ and tests/
+pnpm test          # node:test suite for the validator, archive and signing
+pnpm validate      # check src/ and print each theme's contrast summary
+pnpm build         # unsigned archive: dist/unsigned/panel-theme-collection-<version>.agentpet-plugin
+pnpm verify [--require-signature] [--fingerprint <hex>] [--sha256 <hex>] <archive>   # one archive path; flags in any position
+pnpm sync-rules    # check the vendored validator against vendor.json
 ```
 
 `verify` re-reads the archive under the same ZIP, package and signature rules as the app. `--require-signature` fails an unsigned archive, `--fingerprint` fails unless the archive is signed by that key, and `--sha256` fails unless the archive bytes have that hash (the values in the catalog entry).
 
-`npm run validate` runs the app's own validator and exits with an error exactly when Agent Pets would reject the package. The first line is the diagnostic the app shows in developer mode; the following lines list every other issue in the app's check order (the list the theme editor shows), for example:
+`pnpm validate` runs the app's own validator and exits with an error exactly when Agent Pets would reject the package. The first line is the diagnostic the app shows in developer mode; the following lines list every other issue in the app's check order (the list the theme editor shows), for example:
 
 ```text
 error: sakura.light.background.overlay.opacity: 0.5 < minimum 0.81; text 3.75:1 < 4.5:1 on black image pixel
@@ -75,12 +77,12 @@ error: nord-frost.dark.colors.dangerText: 3.97:1 < 4.5:1 on dangerText at 0.12 o
 
 #### Keeping the rules in sync with the app
 
-`scripts/lib/rules/app/` is a byte-for-byte copy of the app's `electron/plugin-panel-themes.ts`, `panel-theme-color.ts` and `pet-sprite-validation.ts`. `scripts/lib/rules/vendor.json` pins the app commit and the SHA-256 of each file; `npm test` fails if a vendored file was edited.
+`scripts/lib/rules/app/` is a byte-for-byte copy of the app's `electron/plugin-panel-themes.ts`, `panel-theme-color.ts` and `pet-sprite-validation.ts`, and `scripts/lib/rules/src/types/` copies the three type-only modules they import (`panel-theme.ts`, `pet-import.ts`, `plugin.ts`) so `pnpm typecheck` checks the validator too. `src/types/ipc.ts` is not a copy: it is a one-line local stand-in for an IPC type the validator never uses. `scripts/lib/rules/vendor.json` pins the app commit and the SHA-256 of each file; `pnpm test` fails if a vendored file was edited.
 
 ```sh
-npm run sync-rules -- --app <agent-pets checkout> --check        # compare with the pinned commit
-npm run sync-rules -- --app <agent-pets checkout> --commit <rev>  # copy from <rev> and re-pin
-AGENT_PETS_APP_DIR=<agent-pets checkout> npm test                 # also compare, and check the archive, signature and catalog entry with the app's own code
+pnpm sync-rules --app <agent-pets checkout> --check         # compare with the pinned commit
+pnpm sync-rules --app <agent-pets checkout> --commit <rev>   # copy from <rev> and re-pin
+AGENT_PETS_APP_DIR=<agent-pets checkout> pnpm test          # also compare, and check the archive, signature and catalog entry with the app's own code
 ```
 
 Files are read with `git show <commit>:<path>`, so uncommitted edits in the checkout are never copied.
@@ -108,9 +110,9 @@ Releases are signed and published by `.github/workflows/release.yml`:
 
 | Job | Secrets and permissions | What it does |
 |---|---|---|
-| `gate` | read only | Requires a `v<semver>` tag equal to the `src/plugin.json` version, on a commit that is on `main`. Runs `npm ci`, `npm test` with the app contract tests (the app checked out at the commit in `vendor.json`), `npm run validate` and `sync-rules --check`. Fails if the catalog's `index.json` already lists this version or a newer one, or lists the plugin under another key. |
+| `gate` | read only | Requires a `v<semver>` tag equal to the `src/plugin.json` version, on a commit that is on `main`. Runs `pnpm install --frozen-lockfile`, `pnpm typecheck`, `pnpm test` with the app contract tests (the app checked out at the commit in `vendor.json`), `pnpm validate` and `sync-rules --check`. Fails if the catalog's `index.json` already lists this version or a newer one, or lists the plugin under another key. |
 | `sign` | `release` environment, `PLUGIN_SIGNING_KEY` | Checks the tag again, writes the key with `umask 077` to `$RUNNER_TEMP` (outside the work tree), signs, deletes the key in an always-run step, and verifies the archive against the fingerprint in `publisher.json`, so a replaced secret cannot publish. |
-| `catalog-check` | read only | Adds the archive under `packages/` of a catalog checkout, merges its entry into `index.json` with `scripts/catalog-merge.mjs` (the new version goes first, every other field is kept, published versions are refused) and runs the catalog's own validator. |
+| `catalog-check` | read only | Adds the archive under `packages/` of a catalog checkout, merges its entry into `index.json` with `scripts/catalog-merge.ts` (the new version goes first, every other field is kept, published versions are refused) and runs the catalog's own validator. |
 | `release` | `contents: write` | Creates the GitHub Release with the archive and `<archive>.catalog-entry.json`. |
 | `catalog` | `release` environment, `CATALOG_PR_TOKEN` | Rebuilds the same catalog commit, checks that it is the one the validator passed, pushes `publish/<id>-<version>` and opens the pull request. |
 
@@ -136,13 +138,13 @@ Any job can be re-run. An existing release is kept when its assets equal this ru
 With the key from the backup (mode 0600, outside any repository):
 
 ```sh
-npm run sign -- --key <key.pem>
-npm run verify -- --require-signature --fingerprint e78c75d80c8fb08e dist/<archive>
+pnpm sign --key <key.pem>
+pnpm verify --require-signature --fingerprint e78c75d80c8fb08e dist/<archive>
 cp dist/<archive> <catalog>/packages/
-npm run catalog-merge -- --index <catalog>/index.json --archive <catalog>/packages/<archive> --published-at <ISO time>
+pnpm catalog-merge --index <catalog>/index.json --archive <catalog>/packages/<archive> --published-at <ISO time>
 ```
 
-Then commit in the catalog checkout and open the pull request by hand. `npm run catalog-entry -- dist/<archive>` prints the entry on its own, and `npm run keygen -- --out <path>` creates a new key (it never overwrites a file).
+Then commit in the catalog checkout and open the pull request by hand. `pnpm catalog-entry dist/<archive>` prints the entry on its own, and `pnpm keygen --out <path>` creates a new key (it never overwrites a file).
 
 ## Add a theme
 
@@ -157,11 +159,11 @@ Then commit in the catalog checkout and open the pull request by hand. `npm run 
 5. Optional per mode: `petStatus` for the pet status pill, with `background` (alpha 0.85–1) and `text` required and `border`, `textMuted`, `quotaFill`, `quotaTrack`, `quotaWarn` optional. Text must reach 4.5:1 and the quota colours 3:1 on the pill and on its track, over a black and a white desktop. The derived `quotaFill` is the mode's `accent`, which is often too light on the track; declare one.
 6. Optional, shared by both modes: `typography.body` and `typography.heading` (1 to 5 family names, ending with a generic family such as `sans-serif`, `serif`, `monospace`, `system-ui`, `ui-serif`, `ui-rounded` or `ui-monospace`; list CJK families before the generic one), `typography.scale` (0.92 to 1.15, at most 2 decimals) and `shape` radii (`radiusSm` ≤ `radiusMd` ≤ `radiusLg`, at most 16/24/32).
 7. Images go in `src/backgrounds/` as PNG or WebP: at most 8 MiB, 64 to 4096 px per side, 8.39 megapixels, not animated, no EXIF rotation. Fonts go in `src/fonts/` as WOFF2 (up to 1 MiB each, at most 4 faces per theme) and must be declared in the theme's `fonts` and referenced as `@id`. Only bundle OFL-licensed fonts, add their licence under `FONT-LICENSES/` and list them in `src/licenses.json` and `CREDITS.md`.
-8. Run `npm run validate` until it reports no errors, then `npm test`.
+8. Run `pnpm validate` until it reports no errors, then `pnpm test`.
 
 The package may only contain `.json`, `.png`, `.webp` and `.woff2` files: at most 64 files and 25 MiB. Any other file in `src/`, including stray ones such as `.DS_Store`, fails validation; delete it.
 
-`npm run assets` redraws the bundled backgrounds and icon from code (needs `cwebp` from libwebp).
+`pnpm assets` redraws the bundled backgrounds and icon from code (needs `cwebp` from libwebp).
 
 ## Repository layout
 
@@ -172,18 +174,20 @@ src/                     the package root (load this folder in developer mode)
   assets/icon.png
   backgrounds/*.webp
 scripts/
-  validate.mjs build.mjs sign.mjs verify.mjs catalog-entry.mjs keygen.mjs sync-rules.mjs
-  release-check.mjs      release gate: tag = version, version not in the catalog
-  catalog-merge.mjs      adds a signed archive's entry to a catalog checkout's index.json
-  release-text.mjs       release title and notes, catalog commit message and pull request text
+  validate.ts build.ts sign.ts verify.ts catalog-entry.ts keygen.ts sync-rules.ts
+  release-check.ts       release gate: tag = version, version not in the catalog
+  catalog-merge.ts       adds a signed archive's entry to a catalog checkout's index.json
+  release-text.ts        release title and notes, catalog commit message and pull request text
   ci/                    shell steps of release.yml: tag check, package check, release, catalog branch
-  assets/generate.mjs    procedural artwork
+  assets/generate.ts     procedural artwork
   lib/rules/app/         the app's validator, copied verbatim (pinned in lib/rules/vendor.json)
+  lib/rules/src/types/   the app's type-only modules it imports (plus the ipc.ts stand-in)
   lib/rules/             adapter over the vendored validator
   lib/                   images, package rules, ZIP, signatures, catalog entry and merge, release text
 publisher.json           the pinned publisher key fingerprint
 .github/workflows/       ci.yml (tests on every push), release.yml (sign and publish)
-tests/                   node:test
+tests/                   node:test (setup.ts enables Node's compile cache for the suite)
+tsconfig.json            type check only; Node runs the .ts files directly
 ```
 
 ## Licence

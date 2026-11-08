@@ -1,24 +1,30 @@
 {
   "name": "agent-pets-theme-plugin",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Panel themes (colours, fonts, backgrounds; light and dark) for Agent Pets 1.12.0+, packaged as a workerless plugin.",
   "license": "MIT",
   "type": "module",
+  "packageManager": "pnpm@12.18.0",
   "engines": {
     "node": ">=22.18"
   },
   "scripts": {
-    "validate": "node scripts/validate.mjs",
-    "build": "node scripts/build.mjs",
-    "sign": "node scripts/sign.mjs",
-    "verify": "node scripts/verify.mjs",
-    "catalog-entry": "node scripts/catalog-entry.mjs",
-    "catalog-merge": "node scripts/catalog-merge.mjs",
-    "release-check": "node scripts/release-check.mjs",
-    "sync-rules": "node scripts/sync-rules.mjs",
-    "keygen": "node scripts/keygen.mjs",
-    "assets": "node scripts/assets/generate.mjs",
-    "test": "node --test \"tests/*.test.mjs\""
+    "validate": "node scripts/validate.ts",
+    "build": "node scripts/build.ts",
+    "sign": "node scripts/sign.ts",
+    "verify": "node scripts/verify.ts",
+    "catalog-entry": "node scripts/catalog-entry.ts",
+    "catalog-merge": "node scripts/catalog-merge.ts",
+    "release-check": "node scripts/release-check.ts",
+    "sync-rules": "node scripts/sync-rules.ts",
+    "keygen": "node scripts/keygen.ts",
+    "assets": "node scripts/assets/generate.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --import ./tests/setup.ts --test \"tests/*.test.ts\""
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "7.0.2"
   }
 }

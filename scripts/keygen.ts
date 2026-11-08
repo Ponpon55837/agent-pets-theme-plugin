@@ -1,0 +1,37 @@
+#!/usr/bin/env node
+// Generates an Ed25519 signing key (PKCS#8 PEM). Run once per publisher key.
+// Refuses any --out inside this repository or a git work tree, never
+// overwrites an existing file, and writes the key with mode 0600 in a
+// directory created with mode 0700. Back the key up offline and never commit
+// it; CI gets it only as the release environment's PLUGIN_SIGNING_KEY secret.
+//
+// Usage: node scripts/keygen.ts --out ~/.agent-pets/keys/panel-theme-collection.ed25519.pem
+
+import { generateKeyPairSync } from 'node:crypto'
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { cliArgs, die, expandHome, errorMessage } from './lib/cli.ts'
+import { assertKeyPathOutsideRepos } from './lib/keyfile.ts'
+import { fingerprint, formatFingerprint, rawPublicKeyOf } from './lib/signature.ts'
+
+const { options, positionals } = cliArgs({ string: ['out'] }, 'node scripts/keygen.ts --out <path outside any repository>')
+if (!options.out || positionals.length > 0) die('pass --out <path outside any repository>')
+const out = resolve(expandHome(options.out))
+try {
+  assertKeyPathOutsideRepos(out)
+} catch (error) {
+  die(errorMessage(error))
+}
+
+const { privateKey } = generateKeyPairSync('ed25519')
+mkdirSync(dirname(out), { recursive: true, mode: 0o700 })
+try {
+  writeFileSync(out, privateKey.export({ type: 'pkcs8', format: 'pem' }), { mode: 0o600, flag: 'wx' })
+} catch (error) {
+  die((error as NodeJS.ErrnoException).code === 'EEXIST' ? 'the output file already exists; refusing to overwrite a key' : `cannot write the key: ${errorMessage(error)}`)
+}
+const raw = rawPublicKeyOf(privateKey)
+const print = fingerprint(raw)
+console.log(`private key written (mode 0600). Back it up offline.`)
+console.log(`public key:  ${raw.toString('base64')}`)
+console.log(`fingerprint: ${print} (${formatFingerprint(print)})`)

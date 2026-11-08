@@ -5,11 +5,11 @@ artwork, photographs or fonts are included.
 
 | File | Source | Licence |
 |---|---|---|
-| `src/assets/icon.png` | Drawn by `scripts/assets/generate.mjs` (procedural shapes) | MIT, see [LICENSE](LICENSE) |
-| `src/backgrounds/sakura-light.webp` | Drawn by `scripts/assets/generate.mjs` (seeded noise washes and petal shapes) | MIT |
-| `src/backgrounds/matcha-paper.webp` | Drawn by `scripts/assets/generate.mjs` (seamless value-noise paper with fibres) | MIT |
-| `src/backgrounds/dune-light.webp` | Drawn by `scripts/assets/generate.mjs` (gradient sky, sun, layered sine dunes) | MIT |
-| `src/backgrounds/dune-dark.webp` | Drawn by `scripts/assets/generate.mjs` (gradient sky, stars, moon, layered sine dunes) | MIT |
+| `src/assets/icon.png` | Drawn by `scripts/assets/generate.ts` (procedural shapes) | MIT, see [LICENSE](LICENSE) |
+| `src/backgrounds/sakura-light.webp` | Drawn by `scripts/assets/generate.ts` (seeded noise washes and petal shapes) | MIT |
+| `src/backgrounds/matcha-paper.webp` | Drawn by `scripts/assets/generate.ts` (seamless value-noise paper with fibres) | MIT |
+| `src/backgrounds/dune-light.webp` | Drawn by `scripts/assets/generate.ts` (gradient sky, sun, layered sine dunes) | MIT |
+| `src/backgrounds/dune-dark.webp` | Drawn by `scripts/assets/generate.ts` (gradient sky, stars, moon, layered sine dunes) | MIT |
 | `src/plugin.json`, `src/licenses.json` | Written for this repository | MIT |
 
 The WebP files were encoded from the generated pixels with libwebp's `cwebp`

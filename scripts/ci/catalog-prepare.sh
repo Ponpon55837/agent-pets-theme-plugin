@@ -19,7 +19,7 @@ branch=$(publish_branch "$name")
 [ -d "$catalog/packages" ] && [ ! -L "$catalog/packages" ] || fail "The catalog has no packages/ directory."
 [ ! -e "$catalog/packages/$name" ] && [ ! -L "$catalog/packages/$name" ] || fail "packages/$name is already in the catalog; published packages are immutable."
 cp "$archive" "$catalog/packages/$name"
-node "$REPO_ROOT/scripts/catalog-merge.mjs" --index "$catalog/index.json" --archive "$catalog/packages/$name" --published-at "$published_at"
+node "$REPO_ROOT/scripts/catalog-merge.ts" --index "$catalog/index.json" --archive "$catalog/packages/$name" --published-at "$published_at"
 
 git_catalog() {
   git -C "$catalog" -c core.hooksPath=/dev/null -c commit.gpgSign=false \
@@ -28,7 +28,7 @@ git_catalog() {
 git_catalog switch --quiet -c "$branch"
 git_catalog add -- index.json "packages/$name"
 [ "$(git_catalog diff --cached --name-only | sort | tr '\n' ' ')" = "index.json packages/$name " ] || fail "The catalog change touches more than index.json and packages/$name."
-message=$(node "$REPO_ROOT/scripts/release-text.mjs" commit --archive "$archive")
+message=$(node "$REPO_ROOT/scripts/release-text.ts" commit --archive "$archive")
 GIT_AUTHOR_DATE=$published_at GIT_COMMITTER_DATE=$published_at git_catalog commit --quiet -m "$message"
 git_catalog show --stat --format='%H %s' HEAD
 set_output branch "$branch"

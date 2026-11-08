@@ -18,12 +18,12 @@
 | **午夜終端機** | 高對比白紙，深青綠色強調 | 近黑色垂直漸層，亮青綠色強調 | 僅深色 | 等寬標題，圓角 2/4/8 |
 | **沙丘暮色** | 夕陽天空與層層沙丘，蓋一層暖色遮罩 | 星空、彎月與紫色沙丘 | 淺色、深色皆可 | Avenir Next／Segoe UI 標題，字級放大 2%，圓角 10/16/26 |
 
-每個模式都通過 1.12.0 完整的對比檢查，也都設定了自己的寵物狀態膠囊顏色。`npm run validate` 會列出每個模式的背景、宣告的圖片遮罩與自訂背景圖淡化值（並附上計算出的最小值），以及膠囊是否使用主題色。
+每個模式都通過 1.12.0 完整的對比檢查，也都設定了自己的寵物狀態膠囊顏色。`pnpm validate` 會列出每個模式的背景、宣告的圖片遮罩與自訂背景圖淡化值（並附上計算出的最小值），以及膠囊是否使用主題色。
 
 ## 需求
 
 - Agent Pets **1.12.0 以上**。線上目錄項目設定 `"minAppVersion": "1.12.0"`，較舊的 App 不會列出這個插件；在較舊的 App 安裝或從資料夾載入會出現「插件封裝或 manifest 無效。」
-- Node.js 22.18 以上，只有驗證、打包或簽章時需要（內附的 App 驗證器是 TypeScript，透過 Node 內建的型別移除執行）。沒有任何 npm 相依套件。
+- Node.js 22.18 以上，只有驗證、打包或簽章時需要（所有腳本都是 TypeScript，透過 Node 內建的型別移除執行）。以 [pnpm](https://pnpm.io) 安裝的相依套件只有 TypeScript 與 Node 型別，僅供 `pnpm typecheck` 使用，執行時不需要。
 
 ## 安裝
 
@@ -57,16 +57,18 @@
 ## 打包、簽章與驗證
 
 ```sh
-npm test                 # 驗證器、壓縮檔與簽章的 node:test 測試
-npm run validate         # 檢查 src/ 並列出每個主題的對比摘要
-npm run build            # 未簽章的套件：dist/unsigned/panel-theme-collection-<version>.agentpet-plugin
-npm run verify -- [--require-signature] [--fingerprint <hex>] [--sha256 <hex>] <套件路徑>   # 只能指定一個套件路徑；選項位置不限
-npm run sync-rules       # 依 vendor.json 檢查內附的驗證器
+pnpm install       # 安裝型別檢查用的 TypeScript（腳本本身不需要任何套件）
+pnpm typecheck     # 以 tsc --noEmit 檢查 scripts/ 與 tests/
+pnpm test          # 驗證器、壓縮檔與簽章的 node:test 測試
+pnpm validate      # 檢查 src/ 並列出每個主題的對比摘要
+pnpm build         # 未簽章的套件：dist/unsigned/panel-theme-collection-<version>.agentpet-plugin
+pnpm verify [--require-signature] [--fingerprint <hex>] [--sha256 <hex>] <套件路徑>   # 只能指定一個套件路徑；選項位置不限
+pnpm sync-rules    # 依 vendor.json 檢查內附的驗證器
 ```
 
 `verify` 會以與 App 相同的 ZIP、套件與簽章規則重新讀取套件。`--require-signature` 讓未簽章的套件失敗，`--fingerprint` 要求套件由該金鑰簽章，`--sha256` 要求套件位元組的雜湊相符（也就是線上目錄項目裡的值）。
 
-`npm run validate` 執行的就是 App 自己的驗證器：只有在 Agent Pets 會拒絕這個套件時才以錯誤結束。第一行是 App 在開發者模式顯示的診斷訊息，之後依 App 的檢查順序列出其餘所有問題（也就是主題編輯器顯示的清單），例如：
+`pnpm validate` 執行的就是 App 自己的驗證器：只有在 Agent Pets 會拒絕這個套件時才以錯誤結束。第一行是 App 在開發者模式顯示的診斷訊息，之後依 App 的檢查順序列出其餘所有問題（也就是主題編輯器顯示的清單），例如：
 
 ```text
 error: sakura.light.background.overlay.opacity: 0.5 < minimum 0.81; text 3.75:1 < 4.5:1 on black image pixel
@@ -75,12 +77,12 @@ error: nord-frost.dark.colors.dangerText: 3.97:1 < 4.5:1 on dangerText at 0.12 o
 
 #### 讓規則與 App 保持一致
 
-`scripts/lib/rules/app/` 是 App 的 `electron/plugin-panel-themes.ts`、`panel-theme-color.ts` 與 `pet-sprite-validation.ts` 逐位元組的複本。`scripts/lib/rules/vendor.json` 記錄所固定的 App commit 與每個檔案的 SHA-256；複本被修改過時 `npm test` 會失敗。
+`scripts/lib/rules/app/` 是 App 的 `electron/plugin-panel-themes.ts`、`panel-theme-color.ts` 與 `pet-sprite-validation.ts` 逐位元組的複本；`scripts/lib/rules/src/types/` 則複製了它們引用的三個純型別模組（`panel-theme.ts`、`pet-import.ts`、`plugin.ts`），讓 `pnpm typecheck` 也能檢查驗證器。其中 `src/types/ipc.ts` 不是複本，而是驗證器用不到的 IPC 型別的一行本地替身。`scripts/lib/rules/vendor.json` 記錄所固定的 App commit 與每個檔案的 SHA-256；複本被修改過時 `pnpm test` 會失敗。
 
 ```sh
-npm run sync-rules -- --app <agent-pets checkout> --check        # 與固定的 commit 比對
-npm run sync-rules -- --app <agent-pets checkout> --commit <rev>  # 從 <rev> 複製並重新固定
-AGENT_PETS_APP_DIR=<agent-pets checkout> npm test                 # 測試時也一併比對，並用 App 自己的程式檢查套件、簽章與目錄項目
+pnpm sync-rules --app <agent-pets checkout> --check         # 與固定的 commit 比對
+pnpm sync-rules --app <agent-pets checkout> --commit <rev>   # 從 <rev> 複製並重新固定
+AGENT_PETS_APP_DIR=<agent-pets checkout> pnpm test          # 測試時也一併比對，並用 App 自己的程式檢查套件、簽章與目錄項目
 ```
 
 檔案以 `git show <commit>:<path>` 讀取，所以 checkout 中尚未 commit 的修改永遠不會被複製。
@@ -108,9 +110,9 @@ AGENT_PETS_APP_DIR=<agent-pets checkout> npm test                 # 測試時也
 
 | Job | Secret 與權限 | 內容 |
 |---|---|---|
-| `gate` | 唯讀 | tag 必須是 `v<semver>`、等於 `src/plugin.json` 的版本，且指向 `main` 上的 commit。執行 `npm ci`、含 App 契約測試的 `npm test`（App 取自 `vendor.json` 固定的 commit）、`npm run validate` 與 `sync-rules --check`。線上目錄的 `index.json` 已列出這個版本或更新的版本，或以其他金鑰列出這個插件時失敗。 |
+| `gate` | 唯讀 | tag 必須是 `v<semver>`、等於 `src/plugin.json` 的版本，且指向 `main` 上的 commit。執行 `pnpm install --frozen-lockfile`、`pnpm typecheck`、含 App 契約測試的 `pnpm test`（App 取自 `vendor.json` 固定的 commit）、`pnpm validate` 與 `sync-rules --check`。線上目錄的 `index.json` 已列出這個版本或更新的版本，或以其他金鑰列出這個插件時失敗。 |
 | `sign` | `release` environment、`PLUGIN_SIGNING_KEY` | 再次檢查 tag，以 `umask 077` 把金鑰寫到 `$RUNNER_TEMP`（工作目錄之外），簽章後在一定會執行的步驟刪除金鑰，再以 `publisher.json` 的指紋驗證套件，所以被替換的 secret 無法發佈。 |
-| `catalog-check` | 唯讀 | 把套件放進線上目錄 checkout 的 `packages/`，以 `scripts/catalog-merge.mjs` 把項目合併進 `index.json`（新版本放在最前面、其他欄位不變、已發佈的版本會被拒絕），並執行線上目錄自己的驗證器。 |
+| `catalog-check` | 唯讀 | 把套件放進線上目錄 checkout 的 `packages/`，以 `scripts/catalog-merge.ts` 把項目合併進 `index.json`（新版本放在最前面、其他欄位不變、已發佈的版本會被拒絕），並執行線上目錄自己的驗證器。 |
 | `release` | `contents: write` | 建立附上套件與 `<套件>.catalog-entry.json` 的 GitHub Release。 |
 | `catalog` | `release` environment、`CATALOG_PR_TOKEN` | 重建同一個線上目錄 commit，確認它就是驗證器通過的那個，推送 `publish/<id>-<version>` 並開 pull request。 |
 
@@ -136,13 +138,13 @@ AGENT_PETS_APP_DIR=<agent-pets checkout> npm test                 # 測試時也
 使用備份的金鑰（權限 0600，放在任何 repo 之外）：
 
 ```sh
-npm run sign -- --key <金鑰.pem>
-npm run verify -- --require-signature --fingerprint e78c75d80c8fb08e dist/<套件>
+pnpm sign --key <金鑰.pem>
+pnpm verify --require-signature --fingerprint e78c75d80c8fb08e dist/<套件>
 cp dist/<套件> <目錄 repo>/packages/
-npm run catalog-merge -- --index <目錄 repo>/index.json --archive <目錄 repo>/packages/<套件> --published-at <ISO 時間>
+pnpm catalog-merge --index <目錄 repo>/index.json --archive <目錄 repo>/packages/<套件> --published-at <ISO 時間>
 ```
 
-之後在目錄 repo commit，並手動開 pull request。`npm run catalog-entry -- dist/<套件>` 只印出項目；`npm run keygen -- --out <路徑>` 建立新金鑰（不會覆寫既有檔案）。
+之後在目錄 repo commit，並手動開 pull request。`pnpm catalog-entry dist/<套件>` 只印出項目；`pnpm keygen --out <路徑>` 建立新金鑰（不會覆寫既有檔案）。
 
 ## 新增主題
 
@@ -157,11 +159,11 @@ npm run catalog-merge -- --index <目錄 repo>/index.json --archive <目錄 repo
 5. 每個模式可選的 `petStatus`（寵物狀態膠囊）：`background`（alpha 0.85–1）與 `text` 必填，`border`、`textMuted`、`quotaFill`、`quotaTrack`、`quotaWarn` 選填。疊在黑色與白色桌面上時，文字要達 4.5:1，額度顏色在膠囊與額度軌道上要達 3:1。沒寫的 `quotaFill` 會用該模式的 `accent`，在軌道上常常太淡，建議自行指定。
 6. 兩個模式共用的選填設定：`typography.body` 與 `typography.heading`（1 到 5 個字型名稱，最後一個必須是通用字族，如 `sans-serif`、`serif`、`monospace`、`system-ui`、`ui-serif`、`ui-rounded`、`ui-monospace`；中文字型要放在通用字族之前）、`typography.scale`（0.92 到 1.15，最多 2 位小數），以及 `shape` 圓角（`radiusSm` ≤ `radiusMd` ≤ `radiusLg`，上限 16/24/32）。
 7. 圖片放在 `src/backgrounds/`，格式為 PNG 或 WebP：最大 8 MiB、每邊 64 到 4096 px、最多 839 萬像素、不可為動畫、不可有 EXIF 旋轉。字型放在 `src/fonts/`，格式為 WOFF2（每檔最多 1 MiB，每個主題最多 4 個字面），必須在主題的 `fonts` 宣告並以 `@id` 引用。只能內附 OFL 授權的字型，授權檔放在 `FONT-LICENSES/`，並記錄在 `src/licenses.json` 與 `CREDITS.md`。
-8. 執行 `npm run validate` 直到沒有錯誤，再執行 `npm test`。
+8. 執行 `pnpm validate` 直到沒有錯誤，再執行 `pnpm test`。
 
 套件只能包含 `.json`、`.png`、`.webp` 與 `.woff2` 檔案，最多 64 個檔案、25 MiB。`src/` 裡的其他檔案（包括 `.DS_Store` 這類系統自動產生的檔案）都會讓驗證失敗，請刪除。
 
-`npm run assets` 會用程式重新繪製內附的背景圖與圖示（需要 libwebp 的 `cwebp`）。
+`pnpm assets` 會用程式重新繪製內附的背景圖與圖示（需要 libwebp 的 `cwebp`）。
 
 ## Repo 結構
 
@@ -172,18 +174,20 @@ src/                     套件根目錄（開發者模式載入這個資料夾�
   assets/icon.png
   backgrounds/*.webp
 scripts/
-  validate.mjs build.mjs sign.mjs verify.mjs catalog-entry.mjs keygen.mjs sync-rules.mjs
-  release-check.mjs      發佈前檢查：tag 等於版本、版本不在線上目錄中
-  catalog-merge.mjs      把簽好的套件的項目加進線上目錄 checkout 的 index.json
-  release-text.mjs       release 標題與說明、線上目錄的 commit 訊息與 pull request 內容
+  validate.ts build.ts sign.ts verify.ts catalog-entry.ts keygen.ts sync-rules.ts
+  release-check.ts       發佈前檢查：tag 等於版本、版本不在線上目錄中
+  catalog-merge.ts       把簽好的套件的項目加進線上目錄 checkout 的 index.json
+  release-text.ts        release 標題與說明、線上目錄的 commit 訊息與 pull request 內容
   ci/                    release.yml 的 shell 步驟：檢查 tag、檢查套件、release、線上目錄分支
-  assets/generate.mjs    程式繪製的素材
+  assets/generate.ts     程式繪製的素材
   lib/rules/app/         原封不動複製的 App 驗證器（固定於 lib/rules/vendor.json）
+  lib/rules/src/types/   驗證器引用的 App 純型別模組（另有 ipc.ts 本地替身）
   lib/rules/             內附驗證器的轉接層
   lib/                   圖片、套件規則、ZIP、簽章、目錄項目與合併、發佈文字
 publisher.json           固定的發佈者金鑰指紋
 .github/workflows/       ci.yml（每次推送都測試）、release.yml（簽章與發佈）
-tests/                   node:test
+tests/                   node:test（setup.ts 為測試開啟 Node 編譯快取）
+tsconfig.json            只做型別檢查；Node 直接執行 .ts 檔
 ```
 
 ## 授權
