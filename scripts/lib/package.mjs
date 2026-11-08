@@ -2,7 +2,7 @@
 // plugin), referenced and unreferenced assets, extension allowlist and size
 // caps. Shared by validate, build, sign and verify.
 
-import { lstatSync, readdirSync, readFileSync } from 'node:fs'
+import { closeSync, constants, fstatSync, lstatSync, openSync, readdirSync, readFileSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
 import { checkFont, checkPackagedImage } from './images.mjs'
 import { appImageProblem, normalizeRelativePath, parseLocalizedText, validatePanelThemes } from './rules/panel-themes.mjs'
@@ -29,9 +29,27 @@ const extensionOf = path => {
   return dot < 0 ? '' : path.slice(dot).toLowerCase()
 }
 
-/** Reads every file under `root` into Map<package-relative path, Buffer>. Refuses symlinks. */
-export function collectFiles(root) {
+/**
+ * Reads every file under `root` into Map<package-relative path, Buffer>.
+ * Refuses symlinks and special files, opens with O_NOFOLLOW so a file swapped
+ * for a link after the directory scan is not followed, and stops as soon as the
+ * package would exceed the file-count or total-size cap instead of reading it all.
+ */
+export function collectFiles(root, { maxFiles = PACKAGE_LIMITS.maxFiles, maxTotalBytes = PACKAGE_LIMITS.maxTotalBytes } = {}) {
   const files = new Map()
+  let totalBytes = 0
+  const read = (full, path) => {
+    const fd = openSync(full, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0))
+    try {
+      const stat = fstatSync(fd)
+      if (!stat.isFile()) throw new Error(`${path}: not a regular file`)
+      totalBytes += stat.size
+      if (totalBytes > maxTotalBytes) throw new Error(`the package is larger than ${maxTotalBytes} bytes`)
+      return readFileSync(fd)
+    } finally {
+      closeSync(fd)
+    }
+  }
   const walk = (dir) => {
     for (const name of readdirSync(dir).sort()) {
       const full = join(dir, name)
@@ -39,8 +57,10 @@ export function collectFiles(root) {
       const path = relative(root, full).split(sep).join('/')
       if (stat.isSymbolicLink()) throw new Error(`${path}: symbolic links are not allowed in the package`)
       if (stat.isDirectory()) walk(full)
-      else if (stat.isFile()) files.set(path, readFileSync(full))
-      else throw new Error(`${path}: not a regular file`)
+      else if (stat.isFile()) {
+        if (files.size >= maxFiles) throw new Error(`the package has more than ${maxFiles} files`)
+        files.set(path, read(full, path))
+      } else throw new Error(`${path}: not a regular file`)
     }
   }
   walk(root)
@@ -95,7 +115,7 @@ export function validatePackage(files, { allowSignature = false } = {}) {
 
   const manifestBytes = files.get('plugin.json')
   if (!manifestBytes) return { ok: false, errors: [...errors, 'plugin.json: missing at the package root'], warnings, themes: [], totalBytes, fileCount: files.size }
-  if (manifestBytes.length > PACKAGE_LIMITS.maxManifestBytes) errors.push('plugin.json: larger than 256 KB')
+  if (manifestBytes.length > PACKAGE_LIMITS.maxManifestBytes) return { ok: false, errors: [...errors, 'plugin.json: larger than 256 KB'], warnings, themes: [], totalBytes, fileCount: files.size }
   let manifest
   try {
     manifest = JSON.parse(UTF8.decode(manifestBytes))

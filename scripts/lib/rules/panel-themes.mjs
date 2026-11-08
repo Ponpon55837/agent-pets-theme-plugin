@@ -7,6 +7,7 @@
 // shows all the colours to fix. Nothing here re-implements a rule.
 
 import {
+  PANEL_THEME_MAX_THEMES,
   PanelThemeValidationError,
   checkPanelThemePackagedImage,
   minimumPanelThemeOverlay,
@@ -118,7 +119,8 @@ export function validatePanelThemes(value) {
     return { ok: true, errors: [], themes, fontFiles: [...assets.fonts].sort(), images: [...assets.images].sort() }
   }
   const errors = new Set([verdict])
-  if (Array.isArray(value)) for (const theme of value) for (const issue of themeIssues(theme)) errors.add(issue)
+  // Past the theme cap the verdict is the count; listing thousands of themes would only cost time.
+  if (Array.isArray(value) && value.length <= PANEL_THEME_MAX_THEMES) for (const theme of value) for (const issue of themeIssues(theme)) errors.add(issue)
   const assets = declaredAssetPaths(value)
   return { ok: false, errors: [...errors], themes: [], fontFiles: [...assets.fonts].sort(), images: [...assets.images].sort() }
 }

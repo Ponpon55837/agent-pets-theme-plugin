@@ -27,7 +27,13 @@ const manifest = readVendorManifest()
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex')
 // The checkout's own git config and hooks apply, but never GIT_* from this shell.
 const gitEnv = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_')))
-const git = (app, args) => execFileSync('git', ['-C', app, ...args], { env: gitEnv, maxBuffer: 16 * 1024 * 1024 })
+function git(app, args) {
+  try {
+    return execFileSync('git', ['-C', app, ...args], { env: gitEnv, maxBuffer: 16 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] })
+  } catch (error) {
+    die(`git ${args[0]} failed: ${error.stderr?.toString().trim() || error.message}`)
+  }
+}
 const showAt = (app, commit, source) => git(app, ['show', `${commit}:${source}`])
 
 if (!options.app) {

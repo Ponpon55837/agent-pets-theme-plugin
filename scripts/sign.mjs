@@ -12,7 +12,7 @@
 
 import { mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
-import { archiveName, buildArchive, ValidationError } from './lib/build.mjs'
+import { archiveName, buildArchive } from './lib/build.mjs'
 import { cliArgs, DIST_DIR, die, REPO_ROOT, SRC_DIR } from './lib/cli.mjs'
 import { assertKeyPathOutsideRepos } from './lib/keyfile.mjs'
 import { formatFingerprint, loadPrivateKey, sha256Hex, verifySignature } from './lib/signature.mjs'
@@ -45,8 +45,7 @@ let built
 try {
   built = buildArchive(src, { privateKey })
 } catch (error) {
-  if (error instanceof ValidationError) die(error.message)
-  throw error
+  die(error.message)
 }
 const check = verifySignature(built.files)
 if (!check.valid) die(`self-check failed: ${check.reason}`)

@@ -6,7 +6,7 @@
 
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
-import { archiveName, buildArchive, ValidationError } from './lib/build.mjs'
+import { archiveName, buildArchive } from './lib/build.mjs'
 import { cliArgs, DIST_DIR, die, REPO_ROOT, SRC_DIR } from './lib/cli.mjs'
 import { describeThemes } from './lib/package.mjs'
 import { sha256Hex } from './lib/signature.mjs'
@@ -20,8 +20,7 @@ let built
 try {
   built = buildArchive(src)
 } catch (error) {
-  if (error instanceof ValidationError) die(error.message)
-  throw error
+  die(error.message)
 }
 for (const line of describeThemes(built.result)) console.log(line)
 for (const warning of built.result.warnings) console.warn(`warning: ${warning}`)

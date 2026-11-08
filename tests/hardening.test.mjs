@@ -7,7 +7,7 @@ import { after, before, describe, it } from 'node:test'
 import { buildArchive } from '../scripts/lib/build.mjs'
 import { REPO_ROOT, SRC_DIR } from '../scripts/lib/cli.mjs'
 import { assertKeyPathOutsideRepos, gitWorkTreeOf, isInside } from '../scripts/lib/keyfile.mjs'
-import { validatePackage } from '../scripts/lib/package.mjs'
+import { collectFiles, validatePackage } from '../scripts/lib/package.mjs'
 import { readZip } from '../scripts/lib/zip.mjs'
 import { loadManifest, packageWith } from './helpers.mjs'
 
@@ -131,5 +131,23 @@ describe('package text and paths', () => {
   it('rejects paths that differ only by case', () => {
     const files = packageWith(loadManifest(), { add: { 'Assets/Icon.png': Buffer.alloc(0) } })
     assert.match(validatePackage(files).errors.join('\n'), /Assets\/Icon\.png: duplicates assets\/icon\.png/)
+  })
+
+  it('stops reading a folder at the file-count and size caps and refuses links', () => {
+    const dir = join(temp, 'collect')
+    mkdirSync(join(dir, 'sub'), { recursive: true })
+    writeFileSync(join(dir, 'a.json'), '{}')
+    writeFileSync(join(dir, 'sub', 'b.json'), '{"k":1}')
+    assert.deepEqual([...collectFiles(dir).keys()], ['a.json', 'sub/b.json'])
+    assert.throws(() => collectFiles(dir, { maxFiles: 1 }), /more than 1 files/)
+    assert.throws(() => collectFiles(dir, { maxTotalBytes: 8 }), /larger than 8 bytes/)
+    symlinkSync(join(dir, 'a.json'), join(dir, 'sub', 'link.json'))
+    assert.throws(() => collectFiles(dir), /sub\/link\.json: symbolic links are not allowed/)
+  })
+
+  it('does not parse an oversized plugin.json', () => {
+    const files = packageWith(loadManifest())
+    files.set('plugin.json', Buffer.alloc(256 * 1024 + 1, 0x20))
+    assert.deepEqual(validatePackage(files).errors, ['plugin.json: larger than 256 KB'])
   })
 })
