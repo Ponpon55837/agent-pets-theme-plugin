@@ -17,6 +17,21 @@
       "path": "app/pet-sprite-validation.ts",
       "source": "electron/pet-sprite-validation.ts",
       "sha256": "e31a4a8026077fc6f9bf1ec654b2f556550438f5ca50f59e9f5a31da3681bed1"
+    },
+    {
+      "path": "src/types/panel-theme.ts",
+      "source": "src/types/panel-theme.ts",
+      "sha256": "fe35adc9ae3b1794bb850838561aad62a6dc1c751236c5d2b5111beb0b27796b"
+    },
+    {
+      "path": "src/types/pet-import.ts",
+      "source": "src/types/pet-import.ts",
+      "sha256": "cbb0eb150f3bcef24b4e4b6de8711806edaf7b319d4cc4d6879b077b1517da9c"
+    },
+    {
+      "path": "src/types/plugin.ts",
+      "source": "src/types/plugin.ts",
+      "sha256": "d4530275416f895b5df32389aba3dae831d7c1350c7532dd4151abde4a87b1d6"
     }
   ]
 }

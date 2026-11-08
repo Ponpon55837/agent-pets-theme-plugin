@@ -12,10 +12,10 @@ set -euo pipefail
 [ $# -eq 1 ] || fail "usage: verify-package.sh <directory>"
 require_tag
 [[ "${SHA256:-}" =~ ^[0-9a-f]{64}$ ]] || fail "The sign job passed no SHA-256."
-facts=$(node "$REPO_ROOT/scripts/release-check.mjs" --tag "$TAG")
+facts=$(node "$REPO_ROOT/scripts/release-check.ts" --tag "$TAG")
 archive=$(sed -n 's/^archive=//p' <<< "$facts")
 fingerprint=$(sed -n 's/^fingerprint=//p' <<< "$facts")
 path="$1/$archive"
-node "$REPO_ROOT/scripts/verify.mjs" --require-signature --fingerprint "$fingerprint" --sha256 "$SHA256" "$path"
+node "$REPO_ROOT/scripts/verify.ts" --require-signature --fingerprint "$fingerprint" --sha256 "$SHA256" "$path"
 set_output archive "$archive"
 set_output path "$path"
