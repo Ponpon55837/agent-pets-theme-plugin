@@ -1,13 +1,24 @@
 // Small helpers shared by the command-line scripts.
 
-import { fileURLToPath } from 'node:url'
+import { homedir } from 'node:os'
 import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 export const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 export const SRC_DIR = resolve(REPO_ROOT, 'src')
 export const DIST_DIR = resolve(REPO_ROOT, 'dist')
 
 export class UsageError extends Error {}
+
+/** `~` or `~/…` to the home directory, for paths the shell did not expand (`--key=~/…`, quoted values). */
+export function expandHome(path) {
+  return path.replace(/^~(?=[\\/]|$)/, homedir())
+}
+
+/** process.env without any GIT_* variable (matched case-insensitively), so GIT_DIR and friends cannot redirect git. */
+export function gitFreeEnv() {
+  return Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.toUpperCase().startsWith('GIT_')))
+}
 
 /**
  * Parses arguments against a declared option set, in any order.

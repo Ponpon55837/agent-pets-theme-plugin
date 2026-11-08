@@ -2,9 +2,10 @@
 // Writer: entries sorted by path, stored (method 0) so the bytes do not depend
 // on the local zlib build, fixed DOS timestamp, Unix mode 0644, UTF-8 names,
 // no directory entries, no data descriptors, no extra fields, no comment.
-// Reader: one EOCD, no ZIP64/multi-disk/encryption, local headers must agree
-// with the central directory, CRC-32 checked, unsafe or duplicate names
-// rejected. It is used to verify archives this repo produced.
+// Reader: the same structural rules as the app's zip-inspect.ts (one EOCD, no
+// ZIP64/multi-disk/encryption, records inside the central directory, local
+// headers that agree with it, no symlink or reparse-point entries, no unsafe
+// or duplicate names, no overlapping data), plus a CRC-32 check of every entry.
 
 import { inflateRawSync } from 'node:zlib'
 
@@ -106,10 +107,11 @@ export function readZip(input, { maxEntries = 64, maxTotalBytes = 25 * 1024 * 10
   if (eocd >= 20 && bytes.readUInt32LE(eocd - 20) === 0x07064b50) fail('ZIP64 archives are not supported')
   if (bytes.readUInt16LE(eocd + 4) !== 0 || bytes.readUInt16LE(eocd + 6) !== 0) fail('multi-disk archives are not supported')
   const count = bytes.readUInt16LE(eocd + 10)
-  if (count !== bytes.readUInt16LE(eocd + 8)) fail('inconsistent entry counts')
-  if (count > maxEntries) fail(`${count} entries > ${maxEntries}`)
   const centralSize = bytes.readUInt32LE(eocd + 12)
   const centralOffset = bytes.readUInt32LE(eocd + 16)
+  if (count === 0xffff || centralSize === 0xffffffff || centralOffset === 0xffffffff) fail('ZIP64 archives are not supported')
+  if (count !== bytes.readUInt16LE(eocd + 8)) fail('inconsistent entry counts')
+  if (count > maxEntries) fail(`${count} entries > ${maxEntries}`)
   if (centralOffset + centralSize !== eocd) fail('central directory does not end at the EOCD record')
 
   const files = new Map()
@@ -130,9 +132,14 @@ export function readZip(input, { maxEntries = 64, maxTotalBytes = 25 * 1024 * 10
     const host = bytes.readUInt16LE(cursor + 4) >> 8
     const external = bytes.readUInt32LE(cursor + 38)
     const localOffset = bytes.readUInt32LE(cursor + 42)
+    const recordEnd = cursor + 46 + nameLength + extraLength + commentLength
+    if (recordEnd > eocd) fail('corrupt central directory')
+    if (compressedSize === 0xffffffff || size === 0xffffffff || localOffset === 0xffffffff) fail('ZIP64 entries are not supported')
+    if (bytes.readUInt16LE(cursor + 34) !== 0) fail('multi-disk archives are not supported')
     if (flags & 0x41) fail('encrypted entries are not supported')
     if (method !== 0 && method !== 8) fail(`unsupported compression method ${method}`)
-    if (host === 3 && ((external >>> 16) & 0o170000) === 0o120000) fail('symbolic links are not allowed')
+    const link = host === 3 ? ((external >>> 16) & 0o170000) === 0o120000 : (external & 0x400) !== 0
+    if (link) fail('symbolic links and reparse points are not allowed')
     let name
     try {
       name = utf8.decode(bytes.subarray(cursor + 46, cursor + 46 + nameLength))
@@ -143,7 +150,7 @@ export function readZip(input, { maxEntries = 64, maxTotalBytes = 25 * 1024 * 10
       fail(`unsafe entry name ${JSON.stringify(name)}`)
     }
     const centralName = bytes.subarray(cursor + 46, cursor + 46 + nameLength)
-    cursor += 46 + nameLength + extraLength + commentLength
+    cursor = recordEnd
     if (method === 0 && compressedSize !== size) fail(`${name}: stored entry sizes differ`)
 
     // Same agreement rules as the app's zip-inspect.ts: flags, method, name

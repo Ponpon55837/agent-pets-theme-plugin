@@ -1,7 +1,7 @@
 // Builds the .agentpet-plugin archive from the package folder.
 
 import { collectFiles, validatePackage } from './package.mjs'
-import { createSignatureFile, SIGNATURE_FILE } from './signature.mjs'
+import { createSignatureFile, sha256Hex, SIGNATURE_FILE } from './signature.mjs'
 import { writeZip } from './zip.mjs'
 
 export class ValidationError extends Error {
@@ -29,4 +29,13 @@ export function buildArchive(srcDir, { privateKey } = {}) {
     files.set(SIGNATURE_FILE, signature.bytes)
   }
   return { bytes: writeZip(files), files, result, signature }
+}
+
+/** The files / size / sha256 lines that build and sign print for a written archive. */
+export function archiveSummary({ bytes, files }) {
+  return [
+    `files:       ${files.size}`,
+    `size:        ${bytes.length} bytes`,
+    `sha256:      ${sha256Hex(bytes)}`,
+  ]
 }

@@ -6,13 +6,13 @@
 
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
-import { archiveName, buildArchive } from './lib/build.mjs'
+import { archiveName, archiveSummary, buildArchive } from './lib/build.mjs'
 import { cliArgs, DIST_DIR, die, REPO_ROOT, SRC_DIR } from './lib/cli.mjs'
 import { describeThemes } from './lib/package.mjs'
-import { sha256Hex } from './lib/signature.mjs'
 
-const { options, positionals } = cliArgs({ string: ['src', 'out'] }, 'node scripts/build.mjs [--src <folder>] [--out <dir>]')
-if (positionals.length > 0) die(`unexpected argument ${positionals[0]}; usage: node scripts/build.mjs [--src <folder>] [--out <dir>]`)
+const USAGE = 'node scripts/build.mjs [--src <folder>] [--out <dir>]'
+const { options, positionals } = cliArgs({ string: ['src', 'out'] }, USAGE)
+if (positionals.length > 0) die(`unexpected argument ${positionals[0]}; usage: ${USAGE}`)
 const src = options.src ? resolve(options.src) : SRC_DIR
 const outDir = options.out ? resolve(options.out) : join(DIST_DIR, 'unsigned')
 
@@ -28,6 +28,4 @@ mkdirSync(outDir, { recursive: true })
 const target = join(outDir, archiveName(built.result.manifest))
 writeFileSync(target, built.bytes)
 console.log(`\nunsigned package: ${relative(REPO_ROOT, target)}`)
-console.log(`files:  ${built.files.size}`)
-console.log(`size:   ${built.bytes.length} bytes`)
-console.log(`sha256: ${sha256Hex(built.bytes)}`)
+for (const line of archiveSummary(built)) console.log(line)

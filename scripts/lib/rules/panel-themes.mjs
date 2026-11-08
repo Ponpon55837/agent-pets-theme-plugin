@@ -20,7 +20,15 @@ import {
 } from './app/plugin-panel-themes.ts'
 import { relativeLuminance } from './app/panel-theme-color.ts'
 
-export { builtinPanelThemeColors } from './app/plugin-panel-themes.ts'
+export {
+  builtinPanelThemeColors,
+  isWoff2,
+  PANEL_THEME_FONT_MAX_BYTES,
+  PANEL_THEME_IMAGE_MAX_BYTES,
+  PANEL_THEME_IMAGE_MAX_PIXELS,
+  PANEL_THEME_IMAGE_MAX_SIDE,
+  PANEL_THEME_IMAGE_MIN_SIDE,
+} from './app/plugin-panel-themes.ts'
 export { contrastRatio, formatPanelThemeColor, parsePanelThemeColor } from './app/panel-theme-color.ts'
 
 const MODES = ['light', 'dark']
@@ -30,12 +38,14 @@ const bounded = text => new PanelThemeValidationError(text).diagnostic
 
 /** Same rules as the app's normalizeRelativePath (plugin-manifest.ts). */
 export const normalizeRelativePath = normalizePanelThemeAssetPath
+/** Same rules as the app's normalizePlainText (plugin-manifest.ts): NFKC, no control characters or angle brackets. */
+export const normalizePlainText = normalizePanelThemePlainText
 
 /** Mirrors the app's parseLocalizedText(value, max): exactly zh-TW and en-US. */
 export function parseLocalizedText(value, maxLength) {
   if (!isRecord(value) || Object.keys(value).some(key => key !== 'zh-TW' && key !== 'en-US')) return null
-  const zhTW = normalizePanelThemePlainText(value['zh-TW'], maxLength)
-  const enUS = normalizePanelThemePlainText(value['en-US'], maxLength)
+  const zhTW = normalizePlainText(value['zh-TW'], maxLength)
+  const enUS = normalizePlainText(value['en-US'], maxLength)
   return zhTW && enUS ? { 'zh-TW': zhTW, 'en-US': enUS } : null
 }
 

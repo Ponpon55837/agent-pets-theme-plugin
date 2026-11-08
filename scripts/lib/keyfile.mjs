@@ -5,7 +5,11 @@
 import { execFileSync } from 'node:child_process'
 import { existsSync, lstatSync, readdirSync, realpathSync } from 'node:fs'
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
-import { REPO_ROOT } from './cli.mjs'
+import { gitFreeEnv, REPO_ROOT } from './cli.mjs'
+import { readRegularFile } from './files.mjs'
+
+/** An Ed25519 PKCS#8 PEM is about 120 bytes; anything far larger is not a key. */
+export const KEY_FILE_MAX_BYTES = 16 * 1024
 
 const CASE_INSENSITIVE = process.platform === 'darwin' || process.platform === 'win32'
 const fold = value => (CASE_INSENSITIVE ? value.toLowerCase() : value)
@@ -78,9 +82,8 @@ export function ancestorWithGitEntry(path) {
 export function gitWorkTreeOf(path, { git = 'git' } = {}) {
   const dir = nearestExistingDirectory(path)
   if (!dir) return null
-  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.toUpperCase().startsWith('GIT_')))
   try {
-    const top = execFileSync(git, ['rev-parse', '--show-toplevel'], { cwd: dir, env, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim()
+    const top = execFileSync(git, ['rev-parse', '--show-toplevel'], { cwd: dir, env: gitFreeEnv(), stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim()
     return top || null
   } catch (error) {
     return error.code === 'ENOENT' ? undefined : null
@@ -98,4 +101,17 @@ export function assertKeyPathOutsideRepos(path, { git = 'git' } = {}) {
     const tree = gitWorkTreeOf(candidate, { git })
     if (tree) throw new Error('the key path is inside a git work tree; keep signing keys outside any repository')
   }
+}
+
+/**
+ * Reads a private key file: a regular file, not a symbolic link, at most
+ * KEY_FILE_MAX_BYTES, and (outside Windows) without group or other permission
+ * bits. Errors never include the file contents.
+ */
+export function readPrivateKeyFile(path) {
+  const { bytes, mode } = readRegularFile(path, KEY_FILE_MAX_BYTES, 'the key file')
+  if (process.platform !== 'win32' && (mode & 0o077) !== 0) {
+    throw new Error(`the key file is accessible to other users (mode ${(mode & 0o777).toString(8).padStart(3, '0')}); run chmod 600 on it`)
+  }
+  return bytes
 }

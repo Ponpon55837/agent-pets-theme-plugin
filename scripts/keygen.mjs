@@ -9,15 +9,14 @@
 
 import { generateKeyPairSync } from 'node:crypto'
 import { mkdirSync, writeFileSync } from 'node:fs'
-import { homedir } from 'node:os'
 import { dirname, resolve } from 'node:path'
-import { cliArgs, die } from './lib/cli.mjs'
+import { cliArgs, die, expandHome } from './lib/cli.mjs'
 import { assertKeyPathOutsideRepos } from './lib/keyfile.mjs'
 import { fingerprint, formatFingerprint, rawPublicKeyOf } from './lib/signature.mjs'
 
 const { options, positionals } = cliArgs({ string: ['out'] }, 'node scripts/keygen.mjs --out <path outside any repository>')
 if (!options.out || positionals.length > 0) die('pass --out <path outside any repository>')
-const out = resolve(options.out.replace(/^~(?=\/|$)/, homedir()))
+const out = resolve(expandHome(options.out))
 try {
   assertKeyPathOutsideRepos(out)
 } catch (error) {

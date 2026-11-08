@@ -5,6 +5,8 @@
 import { createHash, createPrivateKey, createPublicKey, sign, verify } from 'node:crypto'
 
 export const SIGNATURE_FILE = 'signature.json'
+/** The app refuses a larger signature.json (plugin-signature.ts). */
+export const SIGNATURE_MAX_BYTES = 4 * 1024
 const SPKI_ED25519_PREFIX = Buffer.from('302a300506032b6570032100', 'hex')
 
 const compare = (a, b) => (a < b ? -1 : a > b ? 1 : 0)
@@ -58,8 +60,12 @@ export function createSignatureFile(files, privateKey) {
   return { bytes, rawPublicKey, fingerprint: fingerprint(rawPublicKey) }
 }
 
+const UTF8 = new TextDecoder('utf-8', { fatal: true })
+const BASE64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/
+
+/** Same rule as the app: padded, canonical base64 of exactly `length` bytes. */
 function canonicalBase64(value, length) {
-  if (typeof value !== 'string' || !/^[A-Za-z0-9+/]+={0,2}$/.test(value)) return null
+  if (typeof value !== 'string' || value.length > 128 || !BASE64.test(value)) return null
   const decoded = Buffer.from(value, 'base64')
   return decoded.length === length && decoded.toString('base64') === value ? decoded : null
 }
@@ -71,23 +77,30 @@ function canonicalBase64(value, length) {
 export function verifySignature(files) {
   const bytes = files.get(SIGNATURE_FILE)
   if (!bytes) return { signed: false }
+  const invalid = reason => ({ signed: true, valid: false, reason })
+  if (bytes.length > SIGNATURE_MAX_BYTES) return invalid(`signature.json is larger than ${SIGNATURE_MAX_BYTES} bytes`)
   let document
   try {
-    document = JSON.parse(Buffer.from(bytes).toString('utf8'))
+    document = JSON.parse(UTF8.decode(bytes))
   } catch {
-    return { signed: true, valid: false, reason: 'signature.json is not valid JSON' }
+    return invalid('signature.json is not valid UTF-8 JSON')
   }
-  if (typeof document !== 'object' || document === null || Array.isArray(document)) return { signed: true, valid: false, reason: 'signature.json must be an object' }
+  if (typeof document !== 'object' || document === null || Array.isArray(document)) return invalid('signature.json must be an object')
   const keys = Object.keys(document).sort()
-  if (keys.join(',') !== 'alg,publicKey,signature') return { signed: true, valid: false, reason: 'signature.json must have exactly alg, publicKey and signature' }
-  if (document.alg !== 'ed25519') return { signed: true, valid: false, reason: 'unknown signature algorithm' }
+  if (keys.join(',') !== 'alg,publicKey,signature') return invalid('signature.json must have exactly alg, publicKey and signature')
+  if (document.alg !== 'ed25519') return invalid('unknown signature algorithm')
   const publicKey = canonicalBase64(document.publicKey, 32)
   const signature = canonicalBase64(document.signature, 64)
-  if (!publicKey) return { signed: true, valid: false, reason: 'publicKey must be canonical base64 of 32 bytes' }
-  if (!signature) return { signed: true, valid: false, reason: 'signature must be canonical base64 of 64 bytes' }
-  const key = createPublicKey({ key: Buffer.concat([SPKI_ED25519_PREFIX, publicKey]), format: 'der', type: 'spki' })
-  const valid = verify(null, signaturePayload(files), key, signature)
+  if (!publicKey) return invalid('publicKey must be canonical base64 of 32 bytes')
+  if (!signature) return invalid('signature must be canonical base64 of 64 bytes')
+  let valid
+  try {
+    const key = createPublicKey({ key: Buffer.concat([SPKI_ED25519_PREFIX, publicKey]), format: 'der', type: 'spki' })
+    valid = verify(null, signaturePayload(files), key, signature)
+  } catch {
+    return invalid('publicKey is not a usable Ed25519 key')
+  }
   return valid
     ? { signed: true, valid: true, fingerprint: fingerprint(publicKey), publicKey: document.publicKey }
-    : { signed: true, valid: false, reason: 'signature does not match the package contents' }
+    : invalid('signature does not match the package contents')
 }
