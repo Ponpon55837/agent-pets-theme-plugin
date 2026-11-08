@@ -95,8 +95,8 @@ The publisher key is an Ed25519 private key in PKCS#8 PEM format (fingerprint `e
 
 Releases are signed and published by `.github/workflows/release.yml`:
 
-1. Raise `version` in `src/plugin.json` (published versions are never replaced) and merge it to `main`.
-2. Tag that commit and push the tag. The annotation becomes the release notes.
+1. Raise `version` in `src/plugin.json` and merge it to `main`. Published versions are never replaced, and a version cannot carry `+build` metadata (the catalog's file names exclude `+`).
+2. Tag that commit and push the tag. The tag message (without any signature) heads the release notes, and the tag date becomes the catalog's `publishedAt`.
 
    ```sh
    git tag -a v1.0.1 -m "Short release notes"
@@ -106,42 +106,43 @@ Releases are signed and published by `.github/workflows/release.yml`:
    A manual run (**Actions → Release → Run workflow**) must be started from the tag, with the same version typed in.
 3. Review and merge the catalog pull request the workflow opens. It is never merged automatically.
 
-The workflow runs four jobs:
-
 | Job | Secrets and permissions | What it does |
 |---|---|---|
 | `gate` | read only | Requires a `v<semver>` tag equal to the `src/plugin.json` version, on a commit that is on `main`. Runs `npm ci`, `npm test` with the app contract tests (the app checked out at the commit in `vendor.json`), `npm run validate` and `sync-rules --check`. Fails if the catalog's `index.json` already lists this version or a newer one, or lists the plugin under another key. |
-| `sign` | `release` environment, `PLUGIN_SIGNING_KEY` | Writes the key with `umask 077` to `$RUNNER_TEMP` (outside the work tree), signs, deletes the key in an always-run step, then runs `verify --require-signature --fingerprint <publisher.json> --sha256 <printed>`, so a replaced secret cannot publish. Writes the catalog entry. |
-| `release` | `contents: write` | Verifies the package again and creates the GitHub Release with the archive and `<archive>.catalog-entry.json`. |
-| `catalog` | `release` environment, `CATALOG_PR_TOKEN` | Verifies the package again, adds it under `packages/` of the catalog, merges the entry into `index.json` with `scripts/catalog-merge.mjs` (a new version goes first, every other field is kept, published versions are refused), runs the catalog's own validator, pushes `publish/panel-theme-collection-<version>` and opens the pull request. |
+| `sign` | `release` environment, `PLUGIN_SIGNING_KEY` | Checks the tag again, writes the key with `umask 077` to `$RUNNER_TEMP` (outside the work tree), signs, deletes the key in an always-run step, and verifies the archive against the fingerprint in `publisher.json`, so a replaced secret cannot publish. |
+| `catalog-check` | read only | Adds the archive under `packages/` of a catalog checkout, merges its entry into `index.json` with `scripts/catalog-merge.mjs` (the new version goes first, every other field is kept, published versions are refused) and runs the catalog's own validator. |
+| `release` | `contents: write` | Creates the GitHub Release with the archive and `<archive>.catalog-entry.json`. |
+| `catalog` | `release` environment, `CATALOG_PR_TOKEN` | Rebuilds the same catalog commit, checks that it is the one the validator passed, pushes `publish/<id>-<version>` and opens the pull request. |
+
+Only the archive and its SHA-256 pass from `sign` to the later jobs. Each of them checks the tag again, re-verifies the archive (signature, pinned fingerprint, SHA-256) and rebuilds the catalog entry from it. The jobs that hold a secret run no npm, pnpm or catalog code.
+
+Any job can be re-run. An existing release is kept when its assets equal this run's (missing ones are uploaded and a draft is published), and an existing `publish/` branch is reused when it holds the same files; anything else fails and says what to remove. The signed archive is kept for 7 days; after that, re-run all jobs. Signing is deterministic, so the archive is the same.
 
 #### One-time setup
 
-The `release` environment exists and only accepts tags matching `v*` (**Settings → Environments → release**). Add a required reviewer there if every release should wait for approval.
-
-1. Create a fine-grained personal access token at **Settings → Developer settings → Personal access tokens → Fine-grained tokens**: resource owner `Ponpon55837`, **Only select repositories** → `agent-pets-plugins`, repository permissions **Contents: Read and write** and **Pull requests: Read and write** (Metadata read-only is added automatically), with an expiry. Protect `main` in the catalog repository so the token can only reach it through a pull request.
-2. Store both secrets in the environment. The key is read from the file on stdin, so it never appears in the shell history or on screen; `gh` prompts for the token.
+1. The `release` environment exists and only accepts tags matching `v*` (**Settings → Environments → release**). A run uses the workflow file of the tagged commit, so anyone who can push a `v*` tag could run an edited workflow in that environment; the `gate` checks cannot stop that. Add a tag ruleset (**Settings → Rules → Rulesets → New tag ruleset**, target `v*`) that restricts creations, updates and deletions, with only yourself as a bypass. Add a required reviewer to the environment if every release should wait for approval.
+2. Create a fine-grained personal access token at **Settings → Developer settings → Personal access tokens → Fine-grained tokens**: resource owner `Ponpon55837`, **Only select repositories** → `agent-pets-plugins`, repository permissions **Contents: Read and write** and **Pull requests: Read and write** (Metadata read-only is added automatically), and an expiry date, for example 90 days. When it expires, the `catalog` job fails at the push: set the new token and re-run that job. The catalog's `main` is protected, so the token can only change it through a pull request.
+3. Store both secrets in the environment. The key is read from the file on stdin, so it never appears in the shell history or on screen; `gh` prompts for the token without echoing it.
 
    ```sh
    gh secret set PLUGIN_SIGNING_KEY --env release --repo Ponpon55837/agent-pets-theme-plugin < ~/.agent-pets/keys/panel-theme-collection.ed25519.pem
    gh secret set CATALOG_PR_TOKEN --env release --repo Ponpon55837/agent-pets-theme-plugin
    ```
 
-Keep the offline backup of the key. If it is lost, users must confirm a new fingerprint, and `publisher.json` and the catalog entry have to change in reviewed pull requests.
+4. Back the PEM up offline, for example on an encrypted USB drive. A secret cannot be read back, so this backup is the only copy besides CI. Once the backup is checked, the local copy can be deleted. If the key is lost, users must confirm a new fingerprint, and `publisher.json` and the catalog entry have to change in reviewed pull requests.
 
 #### Local signing (emergencies)
 
-Signing on your own machine still works with the same checks:
+With the key from the backup (mode 0600, outside any repository):
 
 ```sh
-npm run keygen -- --out ~/.agent-pets/keys/<name>.ed25519.pem        # new key only; never overwrites, mode 0600
-npm run sign -- --key ~/.agent-pets/keys/panel-theme-collection.ed25519.pem
-npm run verify -- --require-signature --fingerprint e78c75d80c8fb08e --sha256 <printed sha256> dist/<archive>
-npm run catalog-entry -- dist/<archive>                               # prints the index.json entry
-npm run catalog-merge -- --index <catalog>/index.json --entry <entry.json> --archive <catalog>/packages/<archive>
+npm run sign -- --key <key.pem>
+npm run verify -- --require-signature --fingerprint e78c75d80c8fb08e dist/<archive>
+cp dist/<archive> <catalog>/packages/
+npm run catalog-merge -- --index <catalog>/index.json --archive <catalog>/packages/<archive> --published-at <ISO time>
 ```
 
-`AGENT_PETS_SIGNING_KEY=<path>` works in place of `--key`. Then open the catalog pull request by hand.
+Then commit in the catalog checkout and open the pull request by hand. `npm run catalog-entry -- dist/<archive>` prints the entry on its own, and `npm run keygen -- --out <path>` creates a new key (it never overwrites a file).
 
 ## Add a theme
 
@@ -173,11 +174,13 @@ src/                     the package root (load this folder in developer mode)
 scripts/
   validate.mjs build.mjs sign.mjs verify.mjs catalog-entry.mjs keygen.mjs sync-rules.mjs
   release-check.mjs      release gate: tag = version, version not in the catalog
-  catalog-merge.mjs      adds the entry to a catalog checkout's index.json
+  catalog-merge.mjs      adds a signed archive's entry to a catalog checkout's index.json
+  release-text.mjs       release title and notes, catalog commit message and pull request text
+  ci/                    shell steps of release.yml: tag check, package check, release, catalog branch
   assets/generate.mjs    procedural artwork
   lib/rules/app/         the app's validator, copied verbatim (pinned in lib/rules/vendor.json)
   lib/rules/             adapter over the vendored validator
-  lib/                   images, package rules, ZIP, signatures, catalog entry and merge
+  lib/                   images, package rules, ZIP, signatures, catalog entry and merge, release text
 publisher.json           the pinned publisher key fingerprint
 .github/workflows/       ci.yml (tests on every push), release.yml (sign and publish)
 tests/                   node:test
