@@ -1,2 +1,6 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+*.png binary
+*.webp binary
+*.woff2 binary
+*.agentpet-plugin binary
