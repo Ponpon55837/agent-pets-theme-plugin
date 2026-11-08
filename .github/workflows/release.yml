@@ -1,0 +1,375 @@
+name: Release
+
+# Signs, verifies and publishes one version. A push of the tag v<version> starts it;
+# a manual run must be started from that tag and repeat its version. Four jobs keep
+# the secrets apart: the signing key exists only in "sign", the catalog token only in
+# "catalog", and only "release" can write to this repository.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to publish (must equal the tag this run is started from, without the v)
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CATALOG_REPO: Ponpon55837/agent-pets-plugins
+
+defaults:
+  run:
+    # Explicit bash adds -o pipefail to GitHub's default -e.
+    shell: bash
+
+jobs:
+  gate:
+    name: Check the tag, tests and catalog
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+      archive: ${{ steps.check.outputs.archive }}
+      fingerprint: ${{ steps.check.outputs.fingerprint }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          path: plugin
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check the ref
+        working-directory: plugin
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          TAG: ${{ github.ref_name }}
+          EVENT: ${{ github.event_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [ "$REF_TYPE" != tag ]; then
+            echo "::error::Start the release from a tag v<version>, not from a branch."
+            exit 1
+          fi
+          if [ "$EVENT" = workflow_dispatch ] && [ "v$INPUT_VERSION" != "$TAG" ]; then
+            echo "::error::The version input does not match the tag $TAG."
+            exit 1
+          fi
+          if [ "$(git rev-parse "refs/tags/$TAG^{commit}")" != "$GITHUB_SHA" ]; then
+            echo "::error::Tag $TAG moved after this run started."
+            exit 1
+          fi
+          # Only a commit that is already on main may be published.
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::Tag $TAG points to a commit that is not on main."
+            exit 1
+          fi
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      - name: Install
+        working-directory: plugin
+        run: npm ci --ignore-scripts
+
+      - name: Read the pinned app commit
+        id: vendor
+        working-directory: plugin
+        run: echo "commit=$(node -p "require('./scripts/lib/rules/vendor.json').commit")" >> "$GITHUB_OUTPUT"
+
+      # The app modules the contract tests import need fflate (the version in the app's lockfile).
+      - name: Check out the app at the pinned commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: Ponpon55837/agent-pets
+          ref: ${{ steps.vendor.outputs.commit }}
+          path: app-deps/agent-pets
+          persist-credentials: false
+
+      - name: Install the app modules' dependency
+        run: npm install --no-save --no-package-lock --ignore-scripts --prefix app-deps fflate@0.8.3
+
+      - name: Tests (with the app contract)
+        working-directory: plugin
+        env:
+          AGENT_PETS_APP_DIR: ${{ github.workspace }}/app-deps/agent-pets
+        run: npm test
+
+      - name: Validate
+        working-directory: plugin
+        run: npm run validate
+
+      - name: Compare the vendored rules with the app
+        working-directory: plugin
+        run: node scripts/sync-rules.mjs --app ../app-deps/agent-pets --check
+
+      - name: Check the version against the tag and the catalog
+        id: check
+        working-directory: plugin
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh api "repos/$CATALOG_REPO/contents/index.json" -H 'Accept: application/vnd.github.raw' > "$RUNNER_TEMP/index.json"
+          node scripts/release-check.mjs --tag "$TAG" --catalog "$RUNNER_TEMP/index.json" > "$RUNNER_TEMP/release-check.txt"
+          tee -a "$GITHUB_OUTPUT" < "$RUNNER_TEMP/release-check.txt"
+
+  sign:
+    name: Sign and verify
+    needs: gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: release
+    permissions:
+      contents: read
+    outputs:
+      sha256: ${{ steps.sign.outputs.sha256 }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      # RUNNER_TEMP is outside the work tree, which sign.mjs requires; umask 077 gives mode 0600.
+      - name: Write the signing key
+        env:
+          PLUGIN_SIGNING_KEY: ${{ secrets.PLUGIN_SIGNING_KEY }}
+        run: |
+          if [ -z "$PLUGIN_SIGNING_KEY" ]; then
+            echo "::error::The release environment has no PLUGIN_SIGNING_KEY secret."
+            exit 1
+          fi
+          umask 077
+          printf '%s\n' "$PLUGIN_SIGNING_KEY" > "$RUNNER_TEMP/signing-key.pem"
+
+      - name: Sign
+        id: sign
+        run: |
+          out=$(node scripts/sign.mjs --key "$RUNNER_TEMP/signing-key.pem")
+          printf '%s\n' "$out"
+          sha256=$(printf '%s\n' "$out" | sed -n 's/^sha256: *\([0-9a-f]\{64\}\)$/\1/p')
+          if [ -z "$sha256" ]; then
+            echo "::error::sign printed no SHA-256."
+            exit 1
+          fi
+          echo "sha256=$sha256" >> "$GITHUB_OUTPUT"
+
+      - name: Remove the signing key
+        if: always()
+        run: |
+          key="$RUNNER_TEMP/signing-key.pem"
+          if [ -e "$key" ]; then shred -u "$key" 2>/dev/null || rm -f "$key"; fi
+
+      # The pinned fingerprint comes from publisher.json, so a replaced secret cannot publish.
+      - name: Verify against the pinned key
+        env:
+          ARCHIVE: dist/${{ needs.gate.outputs.archive }}
+          FINGERPRINT: ${{ needs.gate.outputs.fingerprint }}
+          SHA256: ${{ steps.sign.outputs.sha256 }}
+        run: node scripts/verify.mjs --require-signature --fingerprint "$FINGERPRINT" --sha256 "$SHA256" "$ARCHIVE"
+
+      - name: Write the catalog entry
+        env:
+          ARCHIVE: ${{ needs.gate.outputs.archive }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/release"
+          cp "dist/$ARCHIVE" "$RUNNER_TEMP/release/"
+          node scripts/catalog-entry.mjs "dist/$ARCHIVE" > "$RUNNER_TEMP/release/catalog-entry.json"
+          cat "$RUNNER_TEMP/release/catalog-entry.json"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: signed-package
+          path: ${{ runner.temp }}/release/
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    name: GitHub Release
+    needs: [gate, sign]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: signed-package
+          path: ${{ runner.temp }}/release
+
+      - name: Verify the downloaded package
+        env:
+          ARCHIVE: ${{ runner.temp }}/release/${{ needs.gate.outputs.archive }}
+          FINGERPRINT: ${{ needs.gate.outputs.fingerprint }}
+          SHA256: ${{ needs.sign.outputs.sha256 }}
+        run: node scripts/verify.mjs --require-signature --fingerprint "$FINGERPRINT" --sha256 "$SHA256" "$ARCHIVE"
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          VERSION: ${{ needs.gate.outputs.version }}
+          ARCHIVE: ${{ needs.gate.outputs.archive }}
+          FINGERPRINT: ${{ needs.gate.outputs.fingerprint }}
+          SHA256: ${{ needs.sign.outputs.sha256 }}
+        run: |
+          dir="$RUNNER_TEMP/release"
+          if [ "$(gh api "repos/$GITHUB_REPOSITORY/commits/$TAG" --jq .sha)" != "$GITHUB_SHA" ]; then
+            echo "::error::Tag $TAG moved after this run started."
+            exit 1
+          fi
+          notes="$RUNNER_TEMP/notes.md"
+          # An annotated tag's message (without any signature block) heads the notes.
+          read -r type sha < <(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" --jq '.object.type + " " + .object.sha')
+          if [ "$type" = tag ]; then
+            gh api "repos/$GITHUB_REPOSITORY/git/tags/$sha" --jq .message | sed '/^-----BEGIN [A-Z ]*SIGNATURE-----$/,$d' > "$notes"
+          else
+            echo "Panel Theme Collection $VERSION." > "$notes"
+          fi
+          size=$(wc -c < "$dir/$ARCHIVE" | tr -d ' ')
+          {
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Package | \`$ARCHIVE\` |"
+            echo "| SHA-256 | \`$SHA256\` |"
+            echo "| Size | $size bytes |"
+            echo "| Key fingerprint | \`$FINGERPRINT\` |"
+          } >> "$notes"
+          cp "$dir/catalog-entry.json" "$dir/${ARCHIVE%.agentpet-plugin}.catalog-entry.json"
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag \
+            --title "Panel Theme Collection $VERSION" --notes-file "$notes" \
+            "$dir/$ARCHIVE" "$dir/${ARCHIVE%.agentpet-plugin}.catalog-entry.json"
+
+  catalog:
+    name: Catalog pull request
+    needs: [gate, sign, release]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: release
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          path: plugin
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: signed-package
+          path: ${{ runner.temp }}/release
+
+      - name: Verify the downloaded package
+        working-directory: plugin
+        env:
+          ARCHIVE: ${{ runner.temp }}/release/${{ needs.gate.outputs.archive }}
+          FINGERPRINT: ${{ needs.gate.outputs.fingerprint }}
+          SHA256: ${{ needs.sign.outputs.sha256 }}
+        run: node scripts/verify.mjs --require-signature --fingerprint "$FINGERPRINT" --sha256 "$SHA256" "$ARCHIVE"
+
+      - name: Check out the catalog
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ env.CATALOG_REPO }}
+          ref: main
+          path: catalog
+          persist-credentials: false
+
+      - name: Add the package and the index entry
+        env:
+          ARCHIVE: ${{ needs.gate.outputs.archive }}
+        run: |
+          dir="$RUNNER_TEMP/release"
+          # An untouched copy runs the validator, as the catalog's own pull request check runs the base branch's.
+          cp -R catalog catalog-base
+          if [ -e "catalog/packages/$ARCHIVE" ]; then
+            echo "::error::catalog/packages/$ARCHIVE already exists; published packages are immutable."
+            exit 1
+          fi
+          cp "$dir/$ARCHIVE" "catalog/packages/$ARCHIVE"
+          node plugin/scripts/catalog-merge.mjs --index catalog/index.json --entry "$dir/catalog-entry.json" --archive "catalog/packages/$ARCHIVE"
+          git -C catalog diff --stat
+
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          package_json_file: catalog-base/package.json
+
+      - name: Run the catalog validator
+        working-directory: catalog-base
+        run: |
+          pnpm install --frozen-lockfile --ignore-scripts
+          # The validator derives the local package URL prefix from GITHUB_REPOSITORY.
+          GITHUB_REPOSITORY="$CATALOG_REPO" node scripts/validate-catalog.mjs --pr ../catalog --base . --summary "$RUNNER_TEMP/catalog-report.md"
+          cat "$RUNNER_TEMP/catalog-report.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Push the branch and open the pull request
+        working-directory: catalog
+        env:
+          GH_TOKEN: ${{ secrets.CATALOG_PR_TOKEN }}
+          VERSION: ${{ needs.gate.outputs.version }}
+          ARCHIVE: ${{ needs.gate.outputs.archive }}
+          FINGERPRINT: ${{ needs.gate.outputs.fingerprint }}
+          SHA256: ${{ needs.sign.outputs.sha256 }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::The release environment has no CATALOG_PR_TOKEN secret."
+            exit 1
+          fi
+          branch="publish/panel-theme-collection-$VERSION"
+          size=$(wc -c < "packages/$ARCHIVE" | tr -d ' ')
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git switch -c "$branch"
+          git add index.json "packages/$ARCHIVE"
+          git commit -m "feat(catalog): publish panel-theme-collection $VERSION"
+          # gh hands the token to git from the environment; it never appears in a URL, argument or config file.
+          git -c credential.helper= -c 'credential.helper=!gh auth git-credential' push origin "refs/heads/$branch"
+          body="$RUNNER_TEMP/pr-body.md"
+          {
+            echo "由 agent-pets-theme-plugin 的發布流程自動建立，請審查後再合併。"
+            echo
+            echo "| 項目 | 值 |"
+            echo "|---|---|"
+            echo "| 版本 | \`$VERSION\` |"
+            echo "| SHA-256 | \`$SHA256\` |"
+            echo "| 大小 | $size bytes |"
+            echo "| 簽章指紋 | \`$FINGERPRINT\` |"
+            echo "| 最低 App 版本 | \`$(node -e 'console.log(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).versions[0].minAppVersion)' "$RUNNER_TEMP/release/catalog-entry.json")\` |"
+            echo
+            echo "- 新增 \`packages/$ARCHIVE\`"
+            echo "- \`index.json\` 加入此版本，其他欄位不變"
+            echo "- 簽署與驗證：[$TAG 發布流程]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)，[GitHub Release]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$TAG)"
+            echo
+            echo "🤖 Generated with [Claude Code](https://claude.com/claude-code)"
+          } > "$body"
+          gh pr create --repo "$CATALOG_REPO" --base main --head "$branch" \
+            --title "發布 panel-theme-collection $VERSION" --body-file "$body"
