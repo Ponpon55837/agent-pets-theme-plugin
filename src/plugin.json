@@ -88,11 +88,11 @@
               "textSecondary": "#3b4252",
               "textMuted": "#4c566a",
               "accent": "#5e81ac",
-              "accentText": "#3f6390",
+              "accentText": "#3c608c",
               "onAccent": "#ffffff",
               "border": "rgb(46 52 64 / 0.16)",
               "sage": "#7d9a6a",
-              "sageDeep": "#55703f",
+              "sageDeep": "#526d3c",
               "sageDark": "#3d5230",
               "dangerText": "#a3303a",
               "successText": "#3d5f2a",
@@ -102,8 +102,8 @@
           "dark": {
             "colors": {
               "bg": "#2e3440",
-              "surface": "#3b4252",
-              "surface2": "#434c5e",
+              "surface": "#353c4a",
+              "surface2": "#3b4252",
               "text": "#eceff4",
               "textSecondary": "#d8dee9",
               "textMuted": "#c0c8d6",
@@ -115,7 +115,7 @@
               "sageDeep": "#b4cc9f",
               "sageDark": "#cddcbf",
               "dangerText": "#f5b3b9",
-              "successText": "#bcd6a4",
+              "successText": "#acd49a",
               "warnText": "#f0d08a"
             },
             "background": {
@@ -183,7 +183,7 @@
               "sageDark": "#c9d9b8",
               "dangerText": "#ff9f90",
               "successText": "#bcd99a",
-              "warnText": "#ecc970"
+              "warnText": "#f0c062"
             }
           }
         }
@@ -202,7 +202,7 @@
             "colors": {
               "bg": "#f7f7f2",
               "surface": "#ffffff",
-              "surface2": "#ececE4",
+              "surface2": "#ecece4",
               "text": "#0b0f12",
               "textSecondary": "#263238",
               "textMuted": "#3d4a4f",
