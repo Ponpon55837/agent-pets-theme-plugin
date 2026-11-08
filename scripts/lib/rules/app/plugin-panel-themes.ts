@@ -981,7 +981,7 @@ function staticModeChecks(): ModeCheck[] {
 }
 
 const STATIC_MODE_CHECKS: readonly ModeCheck[] = staticModeChecks()
-/** 覆蓋層的最小值與文字可讀性讀到的色鍵（imageBackdrops 以 bg 為底）。 */
+/** 覆蓋層的最小值與文字可讀性讀到的色鍵（imageBackdrops 以 bg 為底）；問題的 path（`…overlay.opacity`）另外加入，維持「path 一定在 reads 裡」。 */
 const OVERLAY_READS: readonly string[] = [...BACKDROP_PAIRS.map(([key]) => key), 'bg'].map(key => colorRead(key as ColorKey))
 
 function gradientStopColor(input: PanelThemeModeCheckInput, index: number): PanelThemeRgba {
@@ -1046,7 +1046,7 @@ function buildModeCheckPlan(input: PanelThemeModeCheckInput): ModeCheckPlan {
   // 圖片背景：以最小覆蓋層檢查，讓診斷訊息可據以修正。
   if (background.type === 'image') {
     checks.push({
-      reads: OVERLAY_READS,
+      reads: [...OVERLAY_READS, 'background.overlay.opacity'],
       run: current => current.background.type === 'image'
         ? overlayIssue(current.colors, current.background.overlay, current.background.opacity, 'background.overlay', 'a black/white image pixel')
         : null,
@@ -1054,7 +1054,7 @@ function buildModeCheckPlan(input: PanelThemeModeCheckInput): ModeCheckPlan {
   }
   if (input.userImageOverlay) {
     checks.push({
-      reads: OVERLAY_READS,
+      reads: [...OVERLAY_READS, 'userImage.overlay.opacity'],
       run: current => current.userImageOverlay ? overlayIssue(current.colors, current.userImageOverlay, 1, 'userImage.overlay', 'a black/white image pixel') : null,
     })
   }

@@ -1,12 +1,12 @@
 {
   "repository": "https://github.com/Ponpon55837/agent-pets",
   "licence": "MIT",
-  "commit": "d32a86fec48bfa3110f45f4cb28def29426ff652",
+  "commit": "f29c466c7e46436d50faf84414f9c3c0682fab93",
   "files": [
     {
       "path": "app/plugin-panel-themes.ts",
       "source": "electron/plugin-panel-themes.ts",
-      "sha256": "38b06c6137d8734726481ab54b124efff76611c05940f7f65eee061da045369a"
+      "sha256": "d97f5817fab93fa827e4419f8f06afe9883c0e8158cf81c1c876913098d7e908"
     },
     {
       "path": "app/panel-theme-color.ts",
