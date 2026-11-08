@@ -1,7 +1,7 @@
 {
   "id": "panel-theme-collection",
   "name": { "zh-TW": "面板主題合集", "en-US": "Panel Theme Collection" },
-  "version": "1.0.0",
+  "version": "1.0.1",
   "apiVersion": "1",
   "author": "Ponpon55837",
   "icon": "assets/icon.png",
