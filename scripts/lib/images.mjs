@@ -2,13 +2,26 @@
 // Nothing is decoded: only signatures, dimensions, animation flags and the
 // EXIF orientation tag are read, as the app does at install time.
 
+import {
+  isWoff2,
+  PANEL_THEME_FONT_MAX_BYTES,
+  PANEL_THEME_IMAGE_MAX_BYTES,
+  PANEL_THEME_IMAGE_MAX_PIXELS,
+  PANEL_THEME_IMAGE_MAX_SIDE,
+  PANEL_THEME_IMAGE_MIN_SIDE,
+} from './rules/panel-themes.mjs'
+
+// The limits are the vendored app constants, so they cannot drift from the app.
 export const IMAGE_LIMITS = Object.freeze({
-  maxBytes: 8 * 1024 * 1024,
-  minSide: 64,
-  maxSide: 4096,
-  maxPixels: 8_388_608,
+  maxBytes: PANEL_THEME_IMAGE_MAX_BYTES,
+  minSide: PANEL_THEME_IMAGE_MIN_SIDE,
+  maxSide: PANEL_THEME_IMAGE_MAX_SIDE,
+  maxPixels: PANEL_THEME_IMAGE_MAX_PIXELS,
 })
-export const FONT_MAX_BYTES = 1024 * 1024
+export const FONT_MAX_BYTES = PANEL_THEME_FONT_MAX_BYTES
+
+const MIB = 1024 * 1024
+const mib = bytes => `${bytes / MIB} MiB`
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]
 
@@ -102,15 +115,14 @@ export function inspectImage(bytes) {
 /** Packaged background/icon rules (§5.1, §5.3). Returns a list of problems. */
 export function checkPackagedImage(bytes, expectedExtension) {
   const problems = []
-  if (bytes.length > IMAGE_LIMITS.maxBytes) problems.push(`${bytes.length} bytes > 8 MiB`)
+  if (bytes.length > IMAGE_LIMITS.maxBytes) problems.push(`${bytes.length} bytes > ${mib(IMAGE_LIMITS.maxBytes)}`)
   const info = inspectImage(bytes)
   if (info.error) return { info: null, problems: [...problems, info.error] }
   if (expectedExtension && `.${info.type}` !== expectedExtension) problems.push(`content is ${info.type.toUpperCase()} but the extension is ${expectedExtension}`)
   const { width, height } = info
-  if (width < IMAGE_LIMITS.minSide || height < IMAGE_LIMITS.minSide || width > IMAGE_LIMITS.maxSide || height > IMAGE_LIMITS.maxSide) {
-    problems.push(`${width}x${height} is outside 64-4096 px per side`)
-  }
-  if (width * height > IMAGE_LIMITS.maxPixels) problems.push(`${width * height} pixels > 8,388,608`)
+  const { minSide, maxSide, maxPixels } = IMAGE_LIMITS
+  if (Math.min(width, height) < minSide || Math.max(width, height) > maxSide) problems.push(`${width}x${height} is outside ${minSide}-${maxSide} px per side`)
+  if (width * height > maxPixels) problems.push(`${width * height} pixels > ${maxPixels.toLocaleString('en-US')}`)
   if (info.animated) problems.push('animated images are not allowed')
   if (info.orientation !== 1) problems.push(`EXIF orientation ${info.orientation}; save it again without rotation`)
   return { info, problems }
@@ -118,7 +130,7 @@ export function checkPackagedImage(bytes, expectedExtension) {
 
 export function checkFont(bytes) {
   const problems = []
-  if (bytes.length > FONT_MAX_BYTES) problems.push(`${bytes.length} bytes > 1 MiB`)
-  if (bytes.length < 4 || ascii(bytes, 0, 4) !== 'wOF2') problems.push('not a WOFF2 file (missing wOF2 signature)')
+  if (bytes.length > FONT_MAX_BYTES) problems.push(`${bytes.length} bytes > ${mib(FONT_MAX_BYTES)}`)
+  if (!isWoff2(bytes)) problems.push('not a WOFF2 file (missing wOF2 signature)')
   return problems
 }

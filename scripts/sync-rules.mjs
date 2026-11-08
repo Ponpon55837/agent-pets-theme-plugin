@@ -11,11 +11,11 @@
 // checkout are never vendored. Without --app only the recorded hashes are checked.
 
 import { execFileSync } from 'node:child_process'
-import { createHash } from 'node:crypto'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { cliArgs, die } from './lib/cli.mjs'
+import { cliArgs, die, gitFreeEnv } from './lib/cli.mjs'
 import { RULES_DIR, VENDOR_FILE, readVendorManifest, vendoredDrift } from './lib/rules/vendor.mjs'
+import { sha256Hex } from './lib/signature.mjs'
 
 const USAGE = 'node scripts/sync-rules.mjs [--app <agent-pets checkout> [--check | --commit <rev>]]'
 const { options, positionals } = cliArgs({ boolean: ['check'], string: ['app', 'commit'] }, USAGE)
@@ -24,9 +24,8 @@ if (options.check && options.commit) die('--check and --commit are exclusive')
 if (options.commit && !options.app) die('--commit needs --app')
 
 const manifest = readVendorManifest()
-const sha256 = bytes => createHash('sha256').update(bytes).digest('hex')
-// The checkout's own git config and hooks apply, but never GIT_* from this shell.
-const gitEnv = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_')))
+// The checkout's own git config applies, but never GIT_* from this shell.
+const gitEnv = gitFreeEnv()
 function git(app, args) {
   try {
     return execFileSync('git', ['-C', app, ...args], { env: gitEnv, maxBuffer: 16 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] })
@@ -68,7 +67,7 @@ if (!/^[0-9a-f]{40}$/.test(commit)) die(`cannot resolve ${options.commit}`)
 const files = manifest.files.map(file => {
   const bytes = showAt(app, commit, file.source)
   writeFileSync(resolve(RULES_DIR, file.path), bytes)
-  return { ...file, sha256: sha256(bytes) }
+  return { ...file, sha256: sha256Hex(bytes) }
 })
 writeFileSync(VENDOR_FILE, `${JSON.stringify({ ...manifest, commit, files }, null, 2)}\n`)
 console.log(`pinned ${files.length} files to app ${commit}`)

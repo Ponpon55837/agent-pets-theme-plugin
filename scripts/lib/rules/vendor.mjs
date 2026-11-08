@@ -1,10 +1,10 @@
 // The pin for the vendored app validator (scripts/lib/rules/app/): which app
 // commit it was copied from and the SHA-256 of every file at that commit.
 
-import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { sha256Hex } from '../signature.mjs'
 
 export const RULES_DIR = dirname(fileURLToPath(import.meta.url))
 export const VENDOR_FILE = resolve(RULES_DIR, 'vendor.json')
@@ -29,6 +29,6 @@ export function readVendorManifest() {
 /** Vendored files whose bytes no longer match the recorded SHA-256 (local edits). */
 export function vendoredDrift(manifest = readVendorManifest()) {
   return manifest.files
-    .filter(file => createHash('sha256').update(readFileSync(resolve(RULES_DIR, file.path))).digest('hex') !== file.sha256)
+    .filter(file => sha256Hex(readFileSync(resolve(RULES_DIR, file.path))) !== file.sha256)
     .map(file => `${file.path}: SHA-256 differs from vendor.json`)
 }

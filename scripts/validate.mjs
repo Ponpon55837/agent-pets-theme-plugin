@@ -14,8 +14,7 @@ let result
 try {
   result = validatePackage(collectFiles(dir))
 } catch (error) {
-  console.error(`error: ${error.message}`)
-  process.exit(1)
+  die(error.message)
 }
 if (!options.quiet) for (const line of describeThemes(result)) console.log(line)
 for (const warning of result.warnings) console.warn(`warning: ${warning}`)
