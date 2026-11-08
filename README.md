@@ -87,30 +87,62 @@ Files are read with `git show <commit>:<path>`, so uncommitted edits in the chec
 
 ### Signing
 
-The publisher key is an Ed25519 private key in PKCS#8 PEM format. It must be a regular file (not a symbolic link) with mode 0600, outside this repository and outside any git work tree; `sign` refuses anything else and never prints or copies the key, and `.gitignore` excludes `*.pem`, `keys/`, `signature.json`, `.env*` and `dist/`.
+The publisher key is an Ed25519 private key in PKCS#8 PEM format (fingerprint `e78c75d80c8fb08e`, pinned in `publisher.json`). `sign` only reads it from a regular file (not a symbolic link) with mode 0600, outside this repository and outside any git work tree, and never prints or copies it. `.gitignore` excludes `*.pem`, `keys/`, `signature.json`, `.env*` and `dist/`.
+
+`sign` adds `signature.json` at the archive root as described in the Agent Pets signing guide (sorted `path<TAB>sha256` lines over every other file, signed with Ed25519) and prints the archive size, SHA-256 and the key fingerprint. `src/` is not changed. Archives are deterministic: entries are sorted, stored without compression and stamped 1980-01-01, so the same `src/` always produces the same bytes.
+
+### Releasing
+
+Releases are signed and published by `.github/workflows/release.yml`:
+
+1. Raise `version` in `src/plugin.json` and merge it to `main`. Published versions are never replaced, and a version cannot carry `+build` metadata (the catalog's file names exclude `+`).
+2. Tag that commit and push the tag. The tag message (without any signature) heads the release notes, and the tag date becomes the catalog's `publishedAt`.
+
+   ```sh
+   git tag -a v1.0.1 -m "Short release notes"
+   git push origin v1.0.1
+   ```
+
+   A manual run (**Actions → Release → Run workflow**) must be started from the tag, with the same version typed in.
+3. Review and merge the catalog pull request the workflow opens. It is never merged automatically.
+
+| Job | Secrets and permissions | What it does |
+|---|---|---|
+| `gate` | read only | Requires a `v<semver>` tag equal to the `src/plugin.json` version, on a commit that is on `main`. Runs `npm ci`, `npm test` with the app contract tests (the app checked out at the commit in `vendor.json`), `npm run validate` and `sync-rules --check`. Fails if the catalog's `index.json` already lists this version or a newer one, or lists the plugin under another key. |
+| `sign` | `release` environment, `PLUGIN_SIGNING_KEY` | Checks the tag again, writes the key with `umask 077` to `$RUNNER_TEMP` (outside the work tree), signs, deletes the key in an always-run step, and verifies the archive against the fingerprint in `publisher.json`, so a replaced secret cannot publish. |
+| `catalog-check` | read only | Adds the archive under `packages/` of a catalog checkout, merges its entry into `index.json` with `scripts/catalog-merge.mjs` (the new version goes first, every other field is kept, published versions are refused) and runs the catalog's own validator. |
+| `release` | `contents: write` | Creates the GitHub Release with the archive and `<archive>.catalog-entry.json`. |
+| `catalog` | `release` environment, `CATALOG_PR_TOKEN` | Rebuilds the same catalog commit, checks that it is the one the validator passed, pushes `publish/<id>-<version>` and opens the pull request. |
+
+Only the archive and its SHA-256 pass from `sign` to the later jobs. Each of them checks the tag again, re-verifies the archive (signature, pinned fingerprint, SHA-256) and rebuilds the catalog entry from it. The jobs that hold a secret run no npm, pnpm or catalog code.
+
+Any job can be re-run. An existing release is kept when its assets equal this run's (missing ones are uploaded and a draft is published), and an existing `publish/` branch is reused when it holds the same files; anything else fails and says what to remove. The signed archive is kept for 7 days; after that, re-run all jobs. Signing is deterministic, so the archive is the same.
+
+#### One-time setup
+
+1. The `release` environment exists and only accepts tags matching `v*` (**Settings → Environments → release**). A run uses the workflow file of the tagged commit, so anyone who can push a `v*` tag could run an edited workflow in that environment; the `gate` checks cannot stop that. Add a tag ruleset (**Settings → Rules → Rulesets → New tag ruleset**, target `v*`) that restricts creations, updates and deletions, with only yourself as a bypass. Add a required reviewer to the environment if every release should wait for approval.
+2. Create a fine-grained personal access token at **Settings → Developer settings → Personal access tokens → Fine-grained tokens**: resource owner `Ponpon55837`, **Only select repositories** → `agent-pets-plugins`, repository permissions **Contents: Read and write** and **Pull requests: Read and write** (Metadata read-only is added automatically), and an expiry date, for example 90 days. When it expires, the `catalog` job fails at the push: set the new token and re-run that job. The catalog's `main` is protected, so the token can only change it through a pull request.
+3. Store both secrets in the environment. The key is read from the file on stdin, so it never appears in the shell history or on screen; `gh` prompts for the token without echoing it.
+
+   ```sh
+   gh secret set PLUGIN_SIGNING_KEY --env release --repo Ponpon55837/agent-pets-theme-plugin < ~/.agent-pets/keys/panel-theme-collection.ed25519.pem
+   gh secret set CATALOG_PR_TOKEN --env release --repo Ponpon55837/agent-pets-theme-plugin
+   ```
+
+4. Back the PEM up offline, for example on an encrypted USB drive. A secret cannot be read back, so this backup is the only copy besides CI. Once the backup is checked, the local copy can be deleted. If the key is lost, users must confirm a new fingerprint, and `publisher.json` and the catalog entry have to change in reviewed pull requests.
+
+#### Local signing (emergencies)
+
+With the key from the backup (mode 0600, outside any repository):
 
 ```sh
-# once: create the key (never overwrites an existing file; mode 0600)
-npm run keygen -- --out ~/.agent-pets/keys/panel-theme-collection.ed25519.pem
-
-# every release: validate, sign and write dist/panel-theme-collection-<version>.agentpet-plugin
-AGENT_PETS_SIGNING_KEY=~/.agent-pets/keys/panel-theme-collection.ed25519.pem npm run sign
-# or
-npm run sign -- --key ~/.agent-pets/keys/panel-theme-collection.ed25519.pem
-
-# print the catalog index entry (size, sha256, publicKeyFingerprint, minAppVersion 1.12.0)
-npm run catalog-entry -- dist/panel-theme-collection-<version>.agentpet-plugin   # exactly one archive path
+npm run sign -- --key <key.pem>
+npm run verify -- --require-signature --fingerprint e78c75d80c8fb08e dist/<archive>
+cp dist/<archive> <catalog>/packages/
+npm run catalog-merge -- --index <catalog>/index.json --archive <catalog>/packages/<archive> --published-at <ISO time>
 ```
 
-`sign` adds `signature.json` at the archive root as described in the Agent Pets signing guide (sorted `path<TAB>sha256` lines over every other file, signed with Ed25519) and prints the archive size, SHA-256 and the key fingerprint. `src/` is not changed. Back the key up offline; if it is lost, users must confirm a new fingerprint.
-
-Archives are deterministic: entries are sorted, stored without compression and stamped 1980-01-01, so the same `src/` always produces the same bytes.
-
-### Publishing
-
-1. Raise `version` in `src/plugin.json`. Published versions are never replaced.
-2. `npm test && npm run sign`, then `npm run verify -- --fingerprint <your key fingerprint> dist/<archive>`.
-3. `npm run catalog-entry -- dist/<archive>` and open a pull request in the catalog repository with the archive under `packages/` and the printed entry (with `"minAppVersion": "1.12.0"`) in `index.json`.
+Then commit in the catalog checkout and open the pull request by hand. `npm run catalog-entry -- dist/<archive>` prints the entry on its own, and `npm run keygen -- --out <path>` creates a new key (it never overwrites a file).
 
 ## Add a theme
 
@@ -141,10 +173,16 @@ src/                     the package root (load this folder in developer mode)
   backgrounds/*.webp
 scripts/
   validate.mjs build.mjs sign.mjs verify.mjs catalog-entry.mjs keygen.mjs sync-rules.mjs
+  release-check.mjs      release gate: tag = version, version not in the catalog
+  catalog-merge.mjs      adds a signed archive's entry to a catalog checkout's index.json
+  release-text.mjs       release title and notes, catalog commit message and pull request text
+  ci/                    shell steps of release.yml: tag check, package check, release, catalog branch
   assets/generate.mjs    procedural artwork
   lib/rules/app/         the app's validator, copied verbatim (pinned in lib/rules/vendor.json)
   lib/rules/             adapter over the vendored validator
-  lib/                   images, package rules, ZIP, signatures, catalog entry
+  lib/                   images, package rules, ZIP, signatures, catalog entry and merge, release text
+publisher.json           the pinned publisher key fingerprint
+.github/workflows/       ci.yml (tests on every push), release.yml (sign and publish)
 tests/                   node:test
 ```
 
