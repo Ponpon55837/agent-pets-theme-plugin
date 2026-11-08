@@ -29,4 +29,4 @@ jobs:
       - name: Build the unsigned package
         run: npm run build
       - name: Verify the built archive
-        run: npm run verify -- dist/unsigned/panel-theme-collection-$(node -p "require('./src/plugin.json').version").agentpet-plugin
+        run: npm run verify -- "dist/unsigned/panel-theme-collection-$(node -p "require('./src/plugin.json').version").agentpet-plugin"
