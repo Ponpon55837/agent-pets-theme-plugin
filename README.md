@@ -22,7 +22,7 @@ Every mode passes the full 1.12.0 contrast matrix, and every mode sets its own p
 
 ## Requirements
 
-- Agent Pets **1.12.0 or later**. The catalog entry sets `"minAppVersion": "1.12.0"`, so older apps do not list the plugin; loading the folder in an older app fails with an invalid-manifest error.
+- Agent Pets **1.12.0 or later**. The catalog entry sets `"minAppVersion": "1.12.0"`, so older apps do not list the plugin; installing it or loading the folder in an older app fails with “The plugin archive or manifest is invalid.”
 - Node.js 22.18 or later, only to validate, build or sign the package (the vendored app validator is TypeScript run through Node's built-in type stripping). There are no npm dependencies.
 
 ## Install
@@ -48,7 +48,7 @@ Once the plugin is enabled it gets its own tab in the panel, after **Sessions**,
 - **Restore built-in** returns both modes to the default look.
 - **Settings → General → Appearance → Panel theme** shows which theme each mode uses and has **Customize…**, **Open plugin settings** and **Restore built-in**.
 
-For a theme that allows your own image (Sakura and Dune Dusk in both modes, Midnight Terminal in dark mode), its card shows the image controls for each mode in which it is in use: **Choose image…**, **Remove image**, **Fit**, **Position**, **Dim** and **Blur**. Agent Pets checks the image (PNG, JPEG or WebP, up to 20 MB and 8192 px per side, not animated) and stores a copy in its own data folder. The plugin never sees the image or its path; removing the plugin deletes it. **Dim** never goes below the minimum that keeps text readable.
+For a theme that allows your own image (Sakura and Dune Dusk in both modes, Midnight Terminal in dark mode), its card shows the image controls for each mode in which it is in use: **Choose image…**, **Remove image**, **Fit**, **Position**, **Dim** and **Blur**. Agent Pets checks the image (PNG, JPEG or WebP, 64 to 8192 px per side, up to 20 MB, not animated) and stores a copy in its own data folder. The plugin never sees the image or its path; removing the plugin deletes it. **Dim** never goes below the minimum that keeps text readable.
 
 ### My themes
 
@@ -60,9 +60,11 @@ For a theme that allows your own image (Sakura and Dune Dusk in both modes, Midn
 npm test                 # node:test suite for the validator, archive and signing
 npm run validate         # check src/ and print each theme's contrast summary
 npm run build            # unsigned archive: dist/unsigned/panel-theme-collection-<version>.agentpet-plugin
-npm run verify -- [--require-signature] <archive>   # exactly one archive path; flags in any position
+npm run verify -- [--require-signature] [--fingerprint <hex>] [--sha256 <hex>] <archive>   # one archive path; flags in any position
 npm run sync-rules       # check the vendored validator against vendor.json
 ```
+
+`verify` re-reads the archive under the same ZIP, package and signature rules as the app. `--require-signature` fails an unsigned archive, `--fingerprint` fails unless the archive is signed by that key, and `--sha256` fails unless the archive bytes have that hash (the values in the catalog entry).
 
 `npm run validate` runs the app's own validator and exits with an error exactly when Agent Pets would reject the package. The first line is the diagnostic the app shows in developer mode; the following lines list every other issue in the app's check order (the list the theme editor shows), for example:
 
@@ -78,14 +80,14 @@ error: nord-frost.dark.colors.dangerText: 3.97:1 < 4.5:1 on dangerText at 0.12 o
 ```sh
 npm run sync-rules -- --app <agent-pets checkout> --check        # compare with the pinned commit
 npm run sync-rules -- --app <agent-pets checkout> --commit <rev>  # copy from <rev> and re-pin
-AGENT_PETS_APP_DIR=<agent-pets checkout> npm test                 # also run the comparison in the tests
+AGENT_PETS_APP_DIR=<agent-pets checkout> npm test                 # also compare, and check the archive, signature and catalog entry with the app's own code
 ```
 
 Files are read with `git show <commit>:<path>`, so uncommitted edits in the checkout are never copied.
 
 ### Signing
 
-The publisher key is an Ed25519 private key in PKCS#8 PEM format. It must live outside this repository and outside any git work tree; the scripts refuse other paths, and `.gitignore` excludes `*.pem`, `keys/`, `signature.json`, `.env*` and `dist/`.
+The publisher key is an Ed25519 private key in PKCS#8 PEM format. It must be a regular file (not a symbolic link) with mode 0600, outside this repository and outside any git work tree; `sign` refuses anything else and never prints or copies the key, and `.gitignore` excludes `*.pem`, `keys/`, `signature.json`, `.env*` and `dist/`.
 
 ```sh
 # once: create the key (never overwrites an existing file; mode 0600)
@@ -107,7 +109,7 @@ Archives are deterministic: entries are sorted, stored without compression and s
 ### Publishing
 
 1. Raise `version` in `src/plugin.json`. Published versions are never replaced.
-2. `npm test && npm run sign`, then `npm run verify -- --require-signature dist/<archive>`.
+2. `npm test && npm run sign`, then `npm run verify -- --fingerprint <your key fingerprint> dist/<archive>`.
 3. `npm run catalog-entry -- dist/<archive>` and open a pull request in the catalog repository with the archive under `packages/` and the printed entry (with `"minAppVersion": "1.12.0"`) in `index.json`.
 
 ## Add a theme
@@ -142,7 +144,7 @@ scripts/
   assets/generate.mjs    procedural artwork
   lib/rules/app/         the app's validator, copied verbatim (pinned in lib/rules/vendor.json)
   lib/rules/             adapter over the vendored validator
-  lib/                   images, package rules, ZIP, signatures
+  lib/                   images, package rules, ZIP, signatures, catalog entry
 tests/                   node:test
 ```
 

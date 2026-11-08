@@ -22,7 +22,7 @@
 
 ## 需求
 
-- Agent Pets **1.12.0 以上**。線上目錄項目設定 `"minAppVersion": "1.12.0"`，較舊的 App 不會列出這個插件；在較舊的 App 從資料夾載入會出現 manifest 無效的錯誤。
+- Agent Pets **1.12.0 以上**。線上目錄項目設定 `"minAppVersion": "1.12.0"`，較舊的 App 不會列出這個插件；在較舊的 App 安裝或從資料夾載入會出現「插件封裝或 manifest 無效。」
 - Node.js 22.18 以上，只有驗證、打包或簽章時需要（內附的 App 驗證器是 TypeScript，透過 Node 內建的型別移除執行）。沒有任何 npm 相依套件。
 
 ## 安裝
@@ -48,7 +48,7 @@
 - **恢復內建外觀** 讓兩種模式都回到預設外觀。
 - **設定 → 通用 → 外觀 → 面板主題** 顯示每種模式目前使用的主題，並有 **自訂…**、**開啟插件設定** 與 **恢復內建外觀**。
 
-允許自訂背景圖的主題（櫻花與沙丘暮色的兩種模式、午夜終端機的深色模式），在該模式使用中時，卡片會顯示 **選擇圖片…**、**移除圖片**、**填滿方式**、**位置**、**淡化** 與 **模糊**。Agent Pets 會檢查圖片（PNG、JPEG 或 WebP，最大 20 MB、每邊 8192 px，不可為動畫），並把副本存到自己的資料夾。插件看不到圖片也不知道路徑；移除插件時圖片會一併刪除。**淡化** 不會低於讓文字保持清楚的最小值。
+允許自訂背景圖的主題（櫻花與沙丘暮色的兩種模式、午夜終端機的深色模式），在該模式使用中時，卡片會顯示 **選擇圖片…**、**移除圖片**、**填滿方式**、**位置**、**淡化** 與 **模糊**。Agent Pets 會檢查圖片（PNG、JPEG 或 WebP，每邊 64 到 8192 px、最大 20 MB，不可為動畫），並把副本存到自己的資料夾。插件看不到圖片也不知道路徑；移除插件時圖片會一併刪除。**淡化** 不會低於讓文字保持清楚的最小值。
 
 ### 我的主題
 
@@ -60,9 +60,11 @@
 npm test                 # 驗證器、壓縮檔與簽章的 node:test 測試
 npm run validate         # 檢查 src/ 並列出每個主題的對比摘要
 npm run build            # 未簽章的套件：dist/unsigned/panel-theme-collection-<version>.agentpet-plugin
-npm run verify -- [--require-signature] <套件路徑>   # 只能指定一個套件路徑；選項位置不限
+npm run verify -- [--require-signature] [--fingerprint <hex>] [--sha256 <hex>] <套件路徑>   # 只能指定一個套件路徑；選項位置不限
 npm run sync-rules       # 依 vendor.json 檢查內附的驗證器
 ```
+
+`verify` 會以與 App 相同的 ZIP、套件與簽章規則重新讀取套件。`--require-signature` 讓未簽章的套件失敗，`--fingerprint` 要求套件由該金鑰簽章，`--sha256` 要求套件位元組的雜湊相符（也就是線上目錄項目裡的值）。
 
 `npm run validate` 執行的就是 App 自己的驗證器：只有在 Agent Pets 會拒絕這個套件時才以錯誤結束。第一行是 App 在開發者模式顯示的診斷訊息，之後依 App 的檢查順序列出其餘所有問題（也就是主題編輯器顯示的清單），例如：
 
@@ -78,14 +80,14 @@ error: nord-frost.dark.colors.dangerText: 3.97:1 < 4.5:1 on dangerText at 0.12 o
 ```sh
 npm run sync-rules -- --app <agent-pets checkout> --check        # 與固定的 commit 比對
 npm run sync-rules -- --app <agent-pets checkout> --commit <rev>  # 從 <rev> 複製並重新固定
-AGENT_PETS_APP_DIR=<agent-pets checkout> npm test                 # 測試時也一併比對
+AGENT_PETS_APP_DIR=<agent-pets checkout> npm test                 # 測試時也一併比對，並用 App 自己的程式檢查套件、簽章與目錄項目
 ```
 
 檔案以 `git show <commit>:<path>` 讀取，所以 checkout 中尚未 commit 的修改永遠不會被複製。
 
 ### 簽章
 
-發佈者金鑰是 PKCS#8 PEM 格式的 Ed25519 私鑰，必須放在這個 repo 以及任何 git 工作目錄之外；腳本會拒絕其他位置，`.gitignore` 也排除了 `*.pem`、`keys/`、`signature.json`、`.env*` 與 `dist/`。
+發佈者金鑰是 PKCS#8 PEM 格式的 Ed25519 私鑰，必須是權限 0600 的一般檔案（不可是符號連結），放在這個 repo 以及任何 git 工作目錄之外；`sign` 會拒絕其他情況，也不會印出或複製金鑰，`.gitignore` 也排除了 `*.pem`、`keys/`、`signature.json`、`.env*` 與 `dist/`。
 
 ```sh
 # 只做一次：建立金鑰（不會覆寫既有檔案；權限 0600）
@@ -107,7 +109,7 @@ npm run catalog-entry -- dist/panel-theme-collection-<version>.agentpet-plugin  
 ### 發佈
 
 1. 調高 `src/plugin.json` 的 `version`。已發佈的版本不會被覆蓋。
-2. 執行 `npm test && npm run sign`，再執行 `npm run verify -- --require-signature dist/<套件>`。
+2. 執行 `npm test && npm run sign`，再執行 `npm run verify -- --fingerprint <你的金鑰指紋> dist/<套件>`。
 3. 執行 `npm run catalog-entry -- dist/<套件>`，在線上目錄 repo 開 pull request：套件放在 `packages/`，印出的項目（含 `"minAppVersion": "1.12.0"`）加進 `index.json`。
 
 ## 新增主題
@@ -142,7 +144,7 @@ scripts/
   assets/generate.mjs    程式繪製的素材
   lib/rules/app/         原封不動複製的 App 驗證器（固定於 lib/rules/vendor.json）
   lib/rules/             內附驗證器的轉接層
-  lib/                   圖片、套件規則、ZIP、簽章
+  lib/                   圖片、套件規則、ZIP、簽章、目錄項目
 tests/                   node:test
 ```
 
