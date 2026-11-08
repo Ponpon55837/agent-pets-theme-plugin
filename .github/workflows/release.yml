@@ -284,7 +284,7 @@ jobs:
           report="$RUNNER_TEMP/catalog-report.md"
           # The validator derives the local package URL prefix from GITHUB_REPOSITORY.
           status=0
-          GITHUB_REPOSITORY="$CATALOG_REPO" node scripts/validate-catalog.ts --pr ../catalog --base . --summary "$report" || status=$?
+          GITHUB_REPOSITORY="$CATALOG_REPO" node scripts/validate-catalog.mjs --pr ../catalog --base . --summary "$report" || status=$?
           if [ -f "$report" ]; then cat "$report" >> "$GITHUB_STEP_SUMMARY"; fi
           exit "$status"
 
