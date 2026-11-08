@@ -62,7 +62,7 @@
 npm test                 # 驗證器、壓縮檔與簽章的 node:test 測試
 npm run validate         # 檢查 src/ 並列出每個主題的對比摘要
 npm run build            # 未簽章的套件：dist/unsigned/panel-theme-collection-<version>.agentpet-plugin
-npm run verify -- <套件路徑> [--require-signature]
+npm run verify -- <套件路徑> [--require-signature]   # 只能指定一個套件路徑
 ```
 
 只要有 App 會拒絕的問題，`npm run validate` 就會以錯誤結束，例如：
@@ -86,7 +86,7 @@ AGENT_PETS_SIGNING_KEY=~/.agent-pets/keys/panel-theme-collection.ed25519.pem npm
 npm run sign -- --key ~/.agent-pets/keys/panel-theme-collection.ed25519.pem
 
 # 印出線上目錄 index 項目（size、sha256、publicKeyFingerprint、minAppVersion 1.12.0）
-npm run catalog-entry -- dist/panel-theme-collection-<version>.agentpet-plugin
+npm run catalog-entry -- dist/panel-theme-collection-<version>.agentpet-plugin   # 只能指定一個套件路徑
 ```
 
 `sign` 會依照 Agent Pets 簽章文件，在套件根目錄加入 `signature.json`（對其他所有檔案排序後的 `路徑<TAB>sha256` 逐行內容做 Ed25519 簽章），並印出套件大小、SHA-256 與金鑰指紋。`src/` 不會被修改。請把金鑰離線備份；遺失時，使用者必須確認新的指紋。
@@ -107,11 +107,11 @@ npm run catalog-entry -- dist/panel-theme-collection-<version>.agentpet-plugin
    - 文字與表面顏色必須不透明。淺色模式：`bg` 亮度至少 0.45，文字要比 `bg` 暗。深色模式：`bg` 亮度最多 0.12，文字要比 `bg` 亮。
 3. 每個模式選一種 `background`：`{ "type": "solid" }`（預設）、`gradient`（`linear` 搭配 `angle`，或 `radial` 搭配 `position`；2 到 5 個不透明色標），或 `image` 搭配 `overlay` `{ color, opacity }`，opacity 介於 0.50 與 0.95。驗證器會印出讓所有文字在任何圖片像素上都清楚的最小遮罩值。
 4. 要讓使用者換背景圖，在模式中加上 `"userImage": { "allowed": true, "overlay": { "color": …, "opacity": … } }`，遮罩規則相同。
-5. 兩個模式共用的選填設定：`typography.body` 與 `typography.heading`（1 到 5 個字型名稱，最後一個必須是通用字族，如 `sans-serif`、`serif`、`monospace`、`system-ui`、`ui-serif`、`ui-rounded`、`ui-monospace`；中文字型要放在通用字族之前）、`typography.scale`（0.92 到 1.15），以及 `shape` 圓角（`radiusSm` ≤ `radiusMd` ≤ `radiusLg`，上限 16/24/32）。
+5. 兩個模式共用的選填設定：`typography.body` 與 `typography.heading`（1 到 5 個字型名稱，最後一個必須是通用字族，如 `sans-serif`、`serif`、`monospace`、`system-ui`、`ui-serif`、`ui-rounded`、`ui-monospace`；中文字型要放在通用字族之前）、`typography.scale`（0.92 到 1.15，最多 2 位小數），以及 `shape` 圓角（`radiusSm` ≤ `radiusMd` ≤ `radiusLg`，上限 16/24/32）。
 6. 圖片放在 `src/backgrounds/`，格式為 PNG 或 WebP：最大 8 MiB、每邊 64 到 4096 px、最多 839 萬像素、不可為動畫、不可有 EXIF 旋轉。字型放在 `src/fonts/`，格式為 WOFF2（每檔最多 1 MiB，每個主題最多 4 個字面），必須在主題的 `fonts` 宣告並以 `@id` 引用。只能內附 OFL 授權的字型，授權檔放在 `FONT-LICENSES/`，並記錄在 `src/licenses.json` 與 `CREDITS.md`。
 7. 執行 `npm run validate` 直到沒有錯誤，再執行 `npm test`。
 
-套件只能包含 `.json`、`.png`、`.webp` 與 `.woff2` 檔案，最多 64 個檔案、25 MiB。
+套件只能包含 `.json`、`.png`、`.webp` 與 `.woff2` 檔案，最多 64 個檔案、25 MiB。`src/` 裡的其他檔案（包括 `.DS_Store` 這類系統自動產生的檔案）都會讓驗證失敗，請刪除。
 
 `npm run assets` 會用程式重新繪製內附的背景圖與圖示（需要 libwebp 的 `cwebp`）。
 

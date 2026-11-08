@@ -62,7 +62,7 @@ For themes that allow your own image, the same card shows **Choose image…** fo
 npm test                 # node:test suite for the validator, archive and signing
 npm run validate         # check src/ and print each theme's contrast summary
 npm run build            # unsigned archive: dist/unsigned/panel-theme-collection-<version>.agentpet-plugin
-npm run verify -- <archive> [--require-signature]
+npm run verify -- <archive> [--require-signature]   # exactly one archive path
 ```
 
 `npm run validate` exits with an error for any problem the app would reject, for example:
@@ -86,7 +86,7 @@ AGENT_PETS_SIGNING_KEY=~/.agent-pets/keys/panel-theme-collection.ed25519.pem npm
 npm run sign -- --key ~/.agent-pets/keys/panel-theme-collection.ed25519.pem
 
 # print the catalog index entry (size, sha256, publicKeyFingerprint, minAppVersion 1.12.0)
-npm run catalog-entry -- dist/panel-theme-collection-<version>.agentpet-plugin
+npm run catalog-entry -- dist/panel-theme-collection-<version>.agentpet-plugin   # exactly one archive path
 ```
 
 `sign` adds `signature.json` at the archive root as described in the Agent Pets signing guide (sorted `path<TAB>sha256` lines over every other file, signed with Ed25519) and prints the archive size, SHA-256 and the key fingerprint. `src/` is not changed. Back the key up offline; if it is lost, users must confirm a new fingerprint.
@@ -107,11 +107,11 @@ Archives are deterministic: entries are sorted, stored without compression and s
    - Text and surface colours must be opaque. Light mode: `bg` luminance at least 0.45 and text darker than `bg`. Dark mode: `bg` luminance at most 0.12 and text lighter than `bg`.
 3. Pick a `background` per mode: `{ "type": "solid" }` (the default), a `gradient` (`linear` with `angle`, or `radial` with `position`; 2 to 5 opaque stops), or an `image` with an `overlay` `{ color, opacity }` between 0.50 and 0.95. The validator prints the smallest overlay that keeps every text colour readable over any image pixel.
 4. For a user image, add `"userImage": { "allowed": true, "overlay": { "color": …, "opacity": … } }` to a mode. The same overlay rule applies.
-5. Optional, shared by both modes: `typography.body` and `typography.heading` (1 to 5 family names, ending with a generic family such as `sans-serif`, `serif`, `monospace`, `system-ui`, `ui-serif`, `ui-rounded` or `ui-monospace`; list CJK families before the generic one), `typography.scale` (0.92 to 1.15) and `shape` radii (`radiusSm` ≤ `radiusMd` ≤ `radiusLg`, at most 16/24/32).
+5. Optional, shared by both modes: `typography.body` and `typography.heading` (1 to 5 family names, ending with a generic family such as `sans-serif`, `serif`, `monospace`, `system-ui`, `ui-serif`, `ui-rounded` or `ui-monospace`; list CJK families before the generic one), `typography.scale` (0.92 to 1.15, at most 2 decimals) and `shape` radii (`radiusSm` ≤ `radiusMd` ≤ `radiusLg`, at most 16/24/32).
 6. Images go in `src/backgrounds/` as PNG or WebP: at most 8 MiB, 64 to 4096 px per side, 8.39 megapixels, not animated, no EXIF rotation. Fonts go in `src/fonts/` as WOFF2 (up to 1 MiB each, at most 4 faces per theme) and must be declared in the theme's `fonts` and referenced as `@id`. Only bundle OFL-licensed fonts, add their licence under `FONT-LICENSES/` and list them in `src/licenses.json` and `CREDITS.md`.
 7. Run `npm run validate` until it reports no errors, then `npm test`.
 
-The package may only contain `.json`, `.png`, `.webp` and `.woff2` files: at most 64 files and 25 MiB.
+The package may only contain `.json`, `.png`, `.webp` and `.woff2` files: at most 64 files and 25 MiB. Any other file in `src/`, including stray ones such as `.DS_Store`, fails validation; delete it.
 
 `npm run assets` redraws the bundled backgrounds and icon from code (needs `cwebp` from libwebp).
 
