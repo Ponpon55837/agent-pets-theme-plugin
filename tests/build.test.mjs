@@ -98,7 +98,15 @@ describe('command-line scripts', () => {
     const verify = node('scripts/verify.mjs', [archive])
     assert.equal(verify.status, 0, verify.stderr)
     assert.match(verify.stdout, /unsigned/)
-    assert.notEqual(node('scripts/verify.mjs', [archive, '--require-signature']).status, 0)
+    // --require-signature must work before or after the archive path.
+    for (const args of [[archive, '--require-signature'], ['--require-signature', archive]]) {
+      const strict = node('scripts/verify.mjs', args)
+      assert.equal(strict.status, 1, args.join(' '))
+      assert.match(strict.stderr, /archive is unsigned/, args.join(' '))
+    }
+    const typo = node('scripts/verify.mjs', ['--require-signatures', archive])
+    assert.equal(typo.status, 1)
+    assert.match(typo.stderr, /unknown option --require-signatures/)
   })
 
   it('sign needs a key path and refuses keys inside the repository', () => {
@@ -124,7 +132,7 @@ describe('command-line scripts', () => {
     const archive = join(out, 'panel-theme-collection-1.0.0.agentpet-plugin')
     const files = readZip(readFileSync(archive))
     assert.equal(verifySignature(files).valid, true)
-    assert.equal(node('scripts/verify.mjs', [archive, '--require-signature']).status, 0)
+    for (const args of [[archive, '--require-signature'], ['--require-signature', archive]]) assert.equal(node('scripts/verify.mjs', args).status, 0, args.join(' '))
 
     const again = node('scripts/sign.mjs', ['--key', keyPath, '--out', join(temp, 'signed-again')])
     assert.equal(again.status, 0, again.stderr)

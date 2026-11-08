@@ -5,7 +5,7 @@
 
 import { readFileSync } from 'node:fs'
 import { basename } from 'node:path'
-import { die, parseArgs } from './lib/cli.mjs'
+import { cliArgs, die } from './lib/cli.mjs'
 import { PACKAGE_LIMITS, validatePackage } from './lib/package.mjs'
 import { sha256Hex, verifySignature } from './lib/signature.mjs'
 import { readZip } from './lib/zip.mjs'
@@ -18,8 +18,9 @@ const DESCRIPTION = {
 const HOMEPAGE = 'https://github.com/Ponpon55837/agent-pets-theme-plugin'
 const PACKAGE_BASE_URL = 'https://raw.githubusercontent.com/Ponpon55837/agent-pets-plugins/main/packages/'
 
-const { options, positionals } = parseArgs(process.argv.slice(2))
-if (positionals.length !== 1) die(positionals.length === 0 ? 'usage: node scripts/catalog-entry.mjs <signed archive> [--published-at <ISO time>]' : `expected exactly one archive path, got ${positionals.length}; usage: node scripts/catalog-entry.mjs <signed archive> [--published-at <ISO time>]`)
+const USAGE = 'node scripts/catalog-entry.mjs <signed archive> [--published-at <ISO time>]'
+const { options, positionals } = cliArgs({ string: ['published-at'] }, USAGE)
+if (positionals.length !== 1) die(positionals.length === 0 ? `usage: ${USAGE}` : `expected exactly one archive path, got ${positionals.length}; usage: ${USAGE}`)
 const bytes = readFileSync(positionals[0])
 let files
 try {
@@ -33,7 +34,7 @@ const signature = verifySignature(files)
 if (!signature.signed) die('the archive is unsigned; run npm run sign first')
 if (!signature.valid) die(`signature invalid: ${signature.reason}`)
 
-const publishedAt = typeof options['published-at'] === 'string' ? new Date(options['published-at']) : new Date()
+const publishedAt = options['published-at'] ? new Date(options['published-at']) : new Date()
 if (Number.isNaN(publishedAt.getTime())) die('--published-at must be an ISO date-time')
 const { manifest } = result
 const name = basename(positionals[0])

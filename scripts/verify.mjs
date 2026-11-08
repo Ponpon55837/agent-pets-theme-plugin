@@ -1,16 +1,17 @@
 #!/usr/bin/env node
 // Re-checks a built archive: strict ZIP read, package rules, theme rules and
 // the signature (if present). With --require-signature an unsigned archive fails.
-// Usage: node scripts/verify.mjs <archive> [--require-signature]
+// Usage: node scripts/verify.mjs [--require-signature] <archive> (flags in any position)
 
 import { readFileSync } from 'node:fs'
-import { die, parseArgs } from './lib/cli.mjs'
+import { cliArgs, die } from './lib/cli.mjs'
 import { describeThemes, PACKAGE_LIMITS, validatePackage } from './lib/package.mjs'
 import { formatFingerprint, sha256Hex, verifySignature } from './lib/signature.mjs'
 import { readZip } from './lib/zip.mjs'
 
-const { options, positionals } = parseArgs(process.argv.slice(2))
-if (positionals.length !== 1) die(positionals.length === 0 ? 'usage: node scripts/verify.mjs <archive> [--require-signature]' : `expected exactly one archive path, got ${positionals.length}; usage: node scripts/verify.mjs <archive> [--require-signature]`)
+const USAGE = 'node scripts/verify.mjs [--require-signature] <archive>'
+const { options, positionals } = cliArgs({ boolean: ['require-signature'] }, USAGE)
+if (positionals.length !== 1) die(positionals.length === 0 ? `usage: ${USAGE}` : `expected exactly one archive path, got ${positionals.length}; usage: ${USAGE}`)
 const bytes = readFileSync(positionals[0])
 if (bytes.length > PACKAGE_LIMITS.maxTotalBytes) die(`archive is ${bytes.length} bytes > 25 MiB`)
 let files

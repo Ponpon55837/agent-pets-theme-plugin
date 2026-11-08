@@ -13,12 +13,14 @@
 import { mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
 import { archiveName, buildArchive, ValidationError } from './lib/build.mjs'
-import { DIST_DIR, die, parseArgs, REPO_ROOT, SRC_DIR } from './lib/cli.mjs'
+import { cliArgs, DIST_DIR, die, REPO_ROOT, SRC_DIR } from './lib/cli.mjs'
 import { assertKeyPathOutsideRepos } from './lib/keyfile.mjs'
 import { formatFingerprint, loadPrivateKey, sha256Hex, verifySignature } from './lib/signature.mjs'
 
-const { options } = parseArgs(process.argv.slice(2))
-const keyOption = typeof options.key === 'string' ? options.key : process.env.AGENT_PETS_SIGNING_KEY
+const USAGE = 'node scripts/sign.mjs [--key <path>] [--src <folder>] [--out <dir>]'
+const { options, positionals } = cliArgs({ string: ['key', 'src', 'out'] }, USAGE)
+if (positionals.length > 0) die(`unexpected argument ${positionals[0]}; usage: ${USAGE}`)
+const keyOption = options.key ?? process.env.AGENT_PETS_SIGNING_KEY
 if (!keyOption) die('no signing key: pass --key <path> or set AGENT_PETS_SIGNING_KEY to the private key path')
 const keyPath = resolve(keyOption)
 try {

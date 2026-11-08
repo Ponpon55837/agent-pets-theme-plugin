@@ -7,11 +7,12 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
 import { archiveName, buildArchive, ValidationError } from './lib/build.mjs'
-import { DIST_DIR, die, parseArgs, REPO_ROOT, SRC_DIR } from './lib/cli.mjs'
+import { cliArgs, DIST_DIR, die, REPO_ROOT, SRC_DIR } from './lib/cli.mjs'
 import { describeThemes } from './lib/package.mjs'
 import { sha256Hex } from './lib/signature.mjs'
 
-const { options } = parseArgs(process.argv.slice(2))
+const { options, positionals } = cliArgs({ string: ['src', 'out'] }, 'node scripts/build.mjs [--src <folder>] [--out <dir>]')
+if (positionals.length > 0) die(`unexpected argument ${positionals[0]}; usage: node scripts/build.mjs [--src <folder>] [--out <dir>]`)
 const src = options.src ? resolve(options.src) : SRC_DIR
 const outDir = options.out ? resolve(options.out) : join(DIST_DIR, 'unsigned')
 

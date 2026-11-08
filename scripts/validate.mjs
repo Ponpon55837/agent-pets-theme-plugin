@@ -4,10 +4,11 @@
 // Usage: node scripts/validate.mjs [folder] [--quiet]
 
 import { resolve } from 'node:path'
-import { parseArgs, SRC_DIR } from './lib/cli.mjs'
+import { cliArgs, die, SRC_DIR } from './lib/cli.mjs'
 import { collectFiles, describeThemes, validatePackage } from './lib/package.mjs'
 
-const { options, positionals } = parseArgs(process.argv.slice(2))
+const { options, positionals } = cliArgs({ boolean: ['quiet'] }, 'node scripts/validate.mjs [folder] [--quiet]')
+if (positionals.length > 1) die(`expected at most one folder, got ${positionals.length}`)
 const dir = positionals[0] ? resolve(positionals[0]) : SRC_DIR
 let result
 try {

@@ -7,22 +7,57 @@ export const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', 
 export const SRC_DIR = resolve(REPO_ROOT, 'src')
 export const DIST_DIR = resolve(REPO_ROOT, 'dist')
 
-/** Parses `--name value`, `--name=value` and `--flag` arguments plus positionals. */
-export function parseArgs(argv) {
+export class UsageError extends Error {}
+
+/**
+ * Parses arguments against a declared option set, in any order.
+ * `boolean` flags never take a value (`--flag`), so they never swallow the next
+ * positional; `string` options take one (`--name value` or `--name=value`).
+ * Unknown, repeated or value-less options throw a UsageError, so a mistyped
+ * safety flag such as `--require-signatures` cannot be silently ignored.
+ * Everything after `--` is positional.
+ */
+export function parseArgs(argv, { boolean = [], string = [] } = {}) {
   const options = {}
   const positionals = []
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index]
-    if (!arg.startsWith('--')) {
+    if (arg === '--') {
+      positionals.push(...argv.slice(index + 1))
+      break
+    }
+    if (!arg.startsWith('-') || arg === '-') {
       positionals.push(arg)
       continue
     }
+    if (!arg.startsWith('--')) throw new UsageError(`unknown option ${arg}`)
     const eq = arg.indexOf('=')
-    if (eq > 0) options[arg.slice(2, eq)] = arg.slice(eq + 1)
-    else if (index + 1 < argv.length && !argv[index + 1].startsWith('--')) options[arg.slice(2)] = argv[++index]
-    else options[arg.slice(2)] = true
+    const name = eq > 0 ? arg.slice(2, eq) : arg.slice(2)
+    if (Object.hasOwn(options, name)) throw new UsageError(`--${name} is given more than once`)
+    if (boolean.includes(name)) {
+      if (eq > 0) throw new UsageError(`--${name} takes no value`)
+      options[name] = true
+    } else if (string.includes(name)) {
+      let value
+      if (eq > 0) value = arg.slice(eq + 1)
+      else if (index + 1 < argv.length && !argv[index + 1].startsWith('--')) value = argv[++index]
+      if (!value) throw new UsageError(`--${name} needs a value`)
+      options[name] = value
+    } else {
+      throw new UsageError(`unknown option --${name}`)
+    }
   }
   return { options, positionals }
+}
+
+/** parseArgs over process.argv that exits with the usage line on a UsageError. */
+export function cliArgs(spec, usage) {
+  try {
+    return parseArgs(process.argv.slice(2), spec)
+  } catch (error) {
+    if (error instanceof UsageError) die(`${error.message}; usage: ${usage}`)
+    throw error
+  }
 }
 
 export function die(message) {
