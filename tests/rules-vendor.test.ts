@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { posix, resolve } from 'node:path'
 import { describe, it } from 'node:test'
 import { REPO_ROOT } from '../scripts/lib/cli.ts'
 import { RULES_DIR, readVendorManifest, vendoredDrift } from '../scripts/lib/rules/vendor.ts'
@@ -13,15 +13,21 @@ describe('vendored app validator', () => {
   it('is pinned to one app commit and unedited since', () => {
     const manifest = readVendorManifest()
     assert.match(manifest.commit, /^[0-9a-f]{40}$/)
-    assert.deepEqual(manifest.files.map(file => file.source).sort(), ['electron/panel-theme-color.ts', 'electron/pet-sprite-validation.ts', 'electron/plugin-panel-themes.ts', 'src/types/panel-theme.ts', 'src/types/pet-import.ts', 'src/types/plugin.ts'])
+    assert.deepEqual(manifest.files.map(file => file.source).sort(), ['electron/panel-theme-color.ts', 'electron/pet-sprite-validation.ts', 'electron/plugin-panel-themes.ts', 'electron/raster-image.ts', 'src/types/locale.ts', 'src/types/panel-theme.ts', 'src/types/pet-atlas.ts', 'src/types/pet-import.ts', 'src/types/plugin.ts'])
     assert.deepEqual(vendoredDrift(manifest), [])
   })
 
   it('imports only its own vendored files at run time', () => {
+    const vendored = new Set(readVendorManifest().files.map(file => file.path))
     for (const file of readVendorManifest().files) {
       const source = readFileSync(resolve(RULES_DIR, file.path), 'utf8')
       const runtime = [...source.matchAll(/^import (?!type )[^;]*?from '([^']+)'/gms)].map(match => match[1])
-      for (const specifier of runtime) assert.match(specifier, /^\.\/[a-z0-9-]+\.ts$/, `${file.path} imports ${specifier}`)
+      // A sibling module, or a vendored src/types module (pet-atlas.ts carries the sprite grid constants).
+      for (const specifier of runtime) {
+        assert.match(specifier, /^\.\/[a-z0-9-]+\.ts$|^\.\.\/src\/types\/[a-z0-9-]+\.ts$/, `${file.path} imports ${specifier}`)
+        const target = posix.join(posix.dirname(file.path), specifier)
+        assert.ok(vendored.has(target), `${file.path} imports ${specifier}, which is not vendored`)
+      }
     }
   })
 

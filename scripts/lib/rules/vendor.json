@@ -1,12 +1,12 @@
 {
   "repository": "https://github.com/Ponpon55837/agent-pets",
   "licence": "MIT",
-  "commit": "f29c466c7e46436d50faf84414f9c3c0682fab93",
+  "commit": "38a75fa36ba09c64d1b5a1164e925bdfbcde51dc",
   "files": [
     {
       "path": "app/plugin-panel-themes.ts",
       "source": "electron/plugin-panel-themes.ts",
-      "sha256": "d97f5817fab93fa827e4419f8f06afe9883c0e8158cf81c1c876913098d7e908"
+      "sha256": "2c040450a7d27d0864abcf7b7dbeedcf07967c74f74cb943bffba35888a5ccf1"
     },
     {
       "path": "app/panel-theme-color.ts",
@@ -16,7 +16,12 @@
     {
       "path": "app/pet-sprite-validation.ts",
       "source": "electron/pet-sprite-validation.ts",
-      "sha256": "e31a4a8026077fc6f9bf1ec654b2f556550438f5ca50f59e9f5a31da3681bed1"
+      "sha256": "e4ffc0297d8fbdd70c450692206365e19a1bee45ff1b85814267830ae2cd1bd9"
+    },
+    {
+      "path": "app/raster-image.ts",
+      "source": "electron/raster-image.ts",
+      "sha256": "eb8dc430cf8a54ba482d8cf4dd9d5e3d72c66efa0b71b24954c50e5ac9215690"
     },
     {
       "path": "src/types/panel-theme.ts",
@@ -31,7 +36,17 @@
     {
       "path": "src/types/plugin.ts",
       "source": "src/types/plugin.ts",
-      "sha256": "d4530275416f895b5df32389aba3dae831d7c1350c7532dd4151abde4a87b1d6"
+      "sha256": "745d96e5793a6741bd30a22a9030b6afcb245aa7433e17a7c78cb9a77727339b"
+    },
+    {
+      "path": "src/types/locale.ts",
+      "source": "src/types/locale.ts",
+      "sha256": "6c5a64fbdc8441923e45c33fb5ca2b5eb409b386a7afb6d8c23d365e89a2de8a"
+    },
+    {
+      "path": "src/types/pet-atlas.ts",
+      "source": "src/types/pet-atlas.ts",
+      "sha256": "04f1b74ee446e148b50f0b06101620784d2874df3985262c0bf168fa3f45c6c7"
     }
   ]
 }

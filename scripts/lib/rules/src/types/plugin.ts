@@ -1,7 +1,7 @@
-export type PluginLocalizedText = {
-  'zh-TW': string
-  'en-US': string
-}
+import type { AppLocale } from './locale.ts'
+import type { PetMotionManifest } from './pet-atlas.ts'
+
+export type PluginLocalizedText = Record<AppLocale, string>
 
 export type PluginSettingScalar = string | number | boolean
 
@@ -63,7 +63,7 @@ export interface PluginSkinContribution {
   displayName: PluginLocalizedText
   spritesheet: string
   kind: 'person' | 'animal'
-  behaviorManifest?: Record<string, { row: number; frames?: number; frameDurations?: number[] }>
+  behaviorManifest?: PetMotionManifest
 }
 
 export type PluginEventSourceState = 'thinking' | 'tool-running' | 'idle' | 'done' | 'error'

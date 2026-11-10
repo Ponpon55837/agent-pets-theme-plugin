@@ -1,5 +1,5 @@
 // The pin for the vendored app validator (scripts/lib/rules/app/ and the
-// type-only modules under scripts/lib/rules/src/types/): which app commit it was
+// type modules under scripts/lib/rules/src/types/): which app commit it was
 // copied from and the SHA-256 of every file at that commit.
 
 import { readFileSync } from 'node:fs'
@@ -26,9 +26,10 @@ export interface VendorManifest {
 }
 
 // Fixed shapes, so an edited vendor.json cannot point a sync anywhere else: the
-// validator modules (app/ from electron/) and the type-only modules they import
+// validator modules (app/ from electron/) and the type modules they import
 // (src/types/, at the same relative path as in the app, so `../src/types/x.ts`
-// resolves unchanged). Types are erased at run time; only tsc reads them.
+// resolves unchanged). All but pet-atlas.ts (the sprite grid constants) are
+// type-only: erased at run time, read only by tsc.
 const LOCAL_PATH = /^(?:app|src\/types)\/[a-z0-9-]+\.ts$/
 const SOURCE_PATH = /^(?:electron|src\/types)\/[a-z0-9-]+\.ts$/
 const SHA256 = /^[0-9a-f]{64}$/

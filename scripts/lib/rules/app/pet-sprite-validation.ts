@@ -1,20 +1,28 @@
 import type { PetImportAtlas, PetImportWarning } from '../src/types/pet-import.ts'
+import {
+  PET_ATLAS_COLUMNS,
+  PET_ATLAS_MAX_COLUMNS,
+  PET_ATLAS_MAX_PIXELS,
+  PET_ATLAS_MAX_ROWS,
+  PET_ATLAS_MIN_ROWS,
+  PET_ATLAS_V1_ROWS,
+  PET_ATLAS_V2_ROWS,
+  PET_CELL_HEIGHT,
+  PET_CELL_WIDTH,
+  petAtlasGridFromSize,
+} from '../src/types/pet-atlas.ts'
+import { rasterImageTypeIn, sniffRasterImageType, type RasterImageType } from './raster-image.ts'
 
-// Structural checks for imported spritesheets: the renderer slices a fixed
-// 192x208 grid, so a sheet with other dimensions renders as blank or garbled
-// cells without any error. These read only the image header.
-
-export const SPRITE_CELL_WIDTH = 192
-export const SPRITE_CELL_HEIGHT = 208
-/** Rows 0-8 (idle ... review) are required by every atlas version. */
-export const SPRITE_MIN_ROWS = 9
+// 匯入 spritesheet 的結構檢查：畫面端依固定格線（src/types/pet-atlas.ts）切圖，
+// 尺寸不對的圖不會報錯，只會畫成空白或錯亂的格子。這裡只讀圖片檔頭；
+// 格式一律由 raster-image.ts 的完整 signature 判定，各讀取函式不再自己比對前幾個位元組。
 
 export type SpriteValidationError = 'E_TYPE' | 'E_SIZE' | 'E_ROWS' | 'E_ORIENTATION'
 
 export const SPRITE_ERROR_MESSAGES: Record<SpriteValidationError, string> = {
   E_TYPE: 'Spritesheet dimensions could not be read',
-  E_SIZE: 'Spritesheet size must be a multiple of the 192x208 frame grid and within the maximum dimensions',
-  E_ROWS: 'Spritesheet needs at least 9 animation rows',
+  E_SIZE: `Spritesheet size must be a multiple of the ${PET_CELL_WIDTH}x${PET_CELL_HEIGHT} frame grid and within the maximum dimensions`,
+  E_ROWS: `Spritesheet needs at least ${PET_ATLAS_MIN_ROWS} animation rows`,
   E_ORIENTATION: 'Spritesheet has EXIF rotation; save it again without rotation',
 }
 
@@ -177,13 +185,15 @@ function readWebpOrientation(bytes: Uint8Array): number {
 /**
  * EXIF orientation the renderer would apply (Chromium honours it by default,
  * including for detached Image objects drawn to a canvas). Anything other
- * than 1 would swap or mirror the 192x208 grid we validated.
+ * than 1 would swap or mirror the cell grid we validated.
  */
 export function readImageOrientation(bytes: Uint8Array): number {
-  if (bytes.length >= 8 && bytes[0] === 0x89 && bytes[1] === 0x50) return readPngOrientation(bytes)
-  if (bytes.length >= 12 && bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[8] === 0x57) return readWebpOrientation(bytes)
-  if (bytes.length >= 4 && bytes[0] === 0xff && bytes[1] === 0xd8) return readJpegInfo(bytes)?.orientation ?? 1
-  return 1
+  switch (sniffRasterImageType(bytes)) {
+    case 'image/png': return readPngOrientation(bytes)
+    case 'image/webp': return readWebpOrientation(bytes)
+    case 'image/jpeg': return readJpegInfo(bytes)?.orientation ?? 1
+    case null: return 1
+  }
 }
 
 function isPngAnimated(bytes: Uint8Array): boolean {
@@ -219,49 +229,41 @@ function isWebpAnimated(bytes: Uint8Array): boolean {
  * O(chunks)；不做任何解碼。
  */
 export function readImageAnimated(bytes: Uint8Array): boolean {
-  if (bytes.length >= 8 && bytes[0] === 0x89 && bytes[1] === 0x50) return isPngAnimated(bytes)
-  if (bytes.length >= 12 && bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[8] === 0x57) return isWebpAnimated(bytes)
-  return false
+  switch (sniffRasterImageType(bytes)) {
+    case 'image/png': return isPngAnimated(bytes)
+    case 'image/webp': return isWebpAnimated(bytes)
+    case 'image/jpeg':
+    case null: return false
+  }
 }
 
 export function readImageSize(bytes: Uint8Array): ImageSize | null {
-  if (bytes.length >= 8 && bytes[0] === 0x89 && bytes[1] === 0x50) return readPngSize(bytes)
-  if (bytes.length >= 12 && bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[8] === 0x57) return readWebpSize(bytes)
-  if (bytes.length >= 4 && bytes[0] === 0xff && bytes[1] === 0xd8) return readJpegSize(bytes)
-  return null
+  switch (sniffRasterImageType(bytes)) {
+    case 'image/png': return readPngSize(bytes)
+    case 'image/webp': return readWebpSize(bytes)
+    case 'image/jpeg': return readJpegSize(bytes)
+    case null: return null
+  }
 }
 
-// Upper bounds read from the image header (no decode needed) so a tiny, highly compressed file
-// cannot make the renderer allocate gigabytes.
-export const SPRITE_MAX_WIDTH = SPRITE_CELL_WIDTH * 32
-export const SPRITE_MAX_HEIGHT = SPRITE_CELL_HEIGHT * 64
-export const SPRITE_MAX_PIXELS = 16 * 1024 * 1024
+// 從檔頭讀到的上限（不必解碼）；數值定義在 pet-atlas.ts，讓一張高度壓縮的小檔無法讓畫面端配置數 GB。
+export const SPRITE_MAX_WIDTH = PET_CELL_WIDTH * PET_ATLAS_MAX_COLUMNS
+export const SPRITE_MAX_HEIGHT = PET_CELL_HEIGHT * PET_ATLAS_MAX_ROWS
+export const SPRITE_MAX_PIXELS = PET_ATLAS_MAX_PIXELS
 
 export function validateSpriteSheet(bytes: Uint8Array): { ok: true; size: ImageSize } | { ok: false; code: SpriteValidationError } {
   const size = readImageSize(bytes)
   if (!size || size.width <= 0 || size.height <= 0) return { ok: false, code: 'E_TYPE' }
-  if (size.width % SPRITE_CELL_WIDTH !== 0 || size.height % SPRITE_CELL_HEIGHT !== 0) {
+  if (size.width % PET_CELL_WIDTH !== 0 || size.height % PET_CELL_HEIGHT !== 0) {
     return { ok: false, code: 'E_SIZE' }
   }
   if (size.width > SPRITE_MAX_WIDTH || size.height > SPRITE_MAX_HEIGHT || size.width * size.height > SPRITE_MAX_PIXELS) {
     return { ok: false, code: 'E_SIZE' }
   }
-  if (size.height / SPRITE_CELL_HEIGHT < SPRITE_MIN_ROWS) return { ok: false, code: 'E_ROWS' }
+  if (size.height / PET_CELL_HEIGHT < PET_ATLAS_MIN_ROWS) return { ok: false, code: 'E_ROWS' }
   if (readImageOrientation(bytes) !== 1) return { ok: false, code: 'E_ORIENTATION' }
   return { ok: true, size }
 }
-
-// Codex pet atlas versions, from the bundled fixtures (public/pets/*):
-//   v1: 8 columns x 9 rows   (1536x1872) - idle, running-right, running-left,
-//       waving, jumping, failed, waiting, running, review
-//   v2: 8 columns x 11 rows  (1536x2288) - v1 plus rows 9-10, which are
-//       look-direction rows ("look-000-to-157.5", "look-180-to-337.5" in
-//       public/pets/qitian-dasheng/validation.json), not walk or sleep.
-export const SPRITE_ATLAS_COLUMNS = 8
-export const SPRITE_V1_ROWS = 9
-export const SPRITE_V2_ROWS = 11
-/** Row 1 is "running-right" in both atlas versions. */
-export const SPRITE_ATLAS_WALK_ROW = 1
 
 export type SpriteAtlasWarning = Exclude<PetImportWarning, 'ignored-entries'>
 
@@ -270,19 +272,29 @@ export interface SpriteAtlasInfo extends PetImportAtlas {
 }
 
 /**
- * The image is the source of truth: 11+ rows is v2, 9-10 rows is v1. A
- * declared `spriteVersionNumber` that disagrees only produces a warning.
+ * 以圖片為準：11 列以上是 v2，9–10 列是 v1。宣告的 `spriteVersionNumber` 不一致只會產生警告。
  */
 export function detectSpriteAtlas(size: ImageSize, declaredVersion?: unknown): SpriteAtlasInfo {
-  const columns = Math.floor(size.width / SPRITE_CELL_WIDTH)
-  const rows = Math.floor(size.height / SPRITE_CELL_HEIGHT)
-  const version: PetImportAtlas['version'] = rows >= SPRITE_V2_ROWS ? 2 : 1
+  const { columns, rows } = petAtlasGridFromSize(size.width, size.height)
+  const version: PetImportAtlas['version'] = rows >= PET_ATLAS_V2_ROWS ? 2 : 1
   const warnings: SpriteAtlasWarning[] = []
   if ((declaredVersion === 1 || declaredVersion === 2) && declaredVersion !== version) warnings.push('declared-version-mismatch')
-  if (rows !== SPRITE_V1_ROWS && rows !== SPRITE_V2_ROWS) warnings.push('unexpected-row-count')
-  if (columns !== SPRITE_ATLAS_COLUMNS) warnings.push('unexpected-column-count')
+  if (rows !== PET_ATLAS_V1_ROWS && rows !== PET_ATLAS_V2_ROWS) warnings.push('unexpected-row-count')
+  if (columns !== PET_ATLAS_COLUMNS) warnings.push('unexpected-column-count')
   return {
     version, columns, rows, width: size.width, height: size.height,
-    frameWidth: SPRITE_CELL_WIDTH, frameHeight: SPRITE_CELL_HEIGHT, warnings,
+    frameWidth: PET_CELL_WIDTH, frameHeight: PET_CELL_HEIGHT, warnings,
   }
+}
+
+// 寵物 spritesheet 接受的格式：匯入、自訂寵物、插件 skin 的讀取與 agent-pets:// 回應共用。
+// 插件套件安裝時另有較窄的白名單（plugin-registry.ts）。
+const PET_SPRITE_TYPES: ReadonlySet<RasterImageType> = new Set(['image/png', 'image/jpeg', 'image/webp'])
+
+export function rasterContentType(data: Uint8Array): RasterImageType | null {
+  return rasterImageTypeIn(data, PET_SPRITE_TYPES)
+}
+
+export function isSupportedRasterImage(data: Uint8Array): boolean {
+  return rasterContentType(data) !== null
 }
