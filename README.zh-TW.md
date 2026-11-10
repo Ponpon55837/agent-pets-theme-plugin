@@ -12,13 +12,13 @@
 
 | 主題 | 淺色 | 深色 | 自訂背景圖 | 字型與造型 |
 |---|---|---|---|---|
-| **櫻花** | 粉色水彩暈染，右上角有櫻花，上面蓋一層淡粉色遮罩 | 深梅色線性漸層 | 淺色、深色皆可 | 圓體標題，圓角 8/14/24 |
-| **北境霜藍** | 雪灰色純色背景，霜藍色強調 | 極夜藍灰，頂端有柔和的放射狀光暈 | 不可 | 系統字型，圓角 6/10/16 |
-| **抹茶和紙** | 重複鋪排的米色和紙紋理，帶纖維 | 深抹茶綠純色 | 不可 | 襯線標題，字級放大 5%，圓角 4/8/12 |
-| **午夜終端機** | 高對比白紙，深青綠色強調 | 近黑色垂直漸層，亮青綠色強調 | 僅深色 | 等寬標題，圓角 2/4/8 |
+| **櫻花** | 粉色水彩暈染，右上角有櫻花，上面蓋一層淡粉色遮罩 | 深梅色到洋紅梅色的三段線性漸層 | 淺色、深色皆可 | 圓體標題，圓角 8/14/24 |
+| **北境霜藍** | 放射狀漸層：頂端近白，經雪灰到霜藍灰 | 放射狀漸層：頂端是帶霜光的石板藍，往下轉為極夜藍灰 | 僅深色 | 系統字型，圓角 6/10/16 |
+| **抹茶和紙** | 重複鋪排的米色和紙紋理，帶纖維 | 近黑綠到深抹茶的三段線性漸層 | 淺色、深色皆可 | 襯線標題，字級放大 5%，圓角 4/8/12 |
+| **午夜終端機** | 高對比白紙，往下淡入一抹淺青綠，深青綠色強調 | 近黑色垂直漸層，往下加深為暗青綠，亮青綠色強調 | 淺色、深色皆可 | 等寬標題，圓角 2/4/8 |
 | **沙丘暮色** | 夕陽天空與層層沙丘，蓋一層暖色遮罩 | 星空、彎月與紫色沙丘 | 淺色、深色皆可 | Avenir Next／Segoe UI 標題，字級放大 2%，圓角 10/16/26 |
 
-每個模式都通過 1.12.0 完整的對比檢查，也都設定了自己的寵物狀態膠囊顏色。`pnpm validate` 會列出每個模式的背景、宣告的圖片遮罩與自訂背景圖淡化值（並附上計算出的最小值），以及膠囊是否使用主題色。
+每個模式都通過 Agent Pets 1.12.0 到 1.13.1 完整的對比檢查（這段期間規則沒有改變），也都設定了自己的寵物狀態膠囊顏色。從 1.1.0 起，每個模式也都自行設定原本會退回內建色盤的選填顏色：`textFaint`、`infoText`、`scrim`、`shadow`、`highlight` 與 `sage` 色系（Claude 供應商識別色）。`pnpm validate` 會列出每個模式的背景、宣告的圖片遮罩與自訂背景圖淡化值（並附上計算出的最小值），以及膠囊是否使用主題色。
 
 ## 需求
 
@@ -48,7 +48,7 @@
 - **恢復內建外觀** 讓兩種模式都回到預設外觀。
 - **設定 → 通用 → 外觀 → 面板主題** 顯示每種模式目前使用的主題，並有 **自訂…**、**開啟插件設定** 與 **恢復內建外觀**。
 
-允許自訂背景圖的主題（櫻花與沙丘暮色的兩種模式、午夜終端機的深色模式），在該模式使用中時，卡片會顯示 **選擇圖片…**、**移除圖片**、**填滿方式**、**位置**、**淡化** 與 **模糊**。Agent Pets 會檢查圖片（PNG、JPEG 或 WebP，每邊 64 到 8192 px、最大 20 MB，不可為動畫），並把副本存到自己的資料夾。插件看不到圖片也不知道路徑；移除插件時圖片會一併刪除。**淡化** 不會低於讓文字保持清楚的最小值。
+允許自訂背景圖的主題（北境霜藍的淺色模式除外：它的強調文字在深色圖片上需要 0.94 的淡化），在該模式使用中時，卡片會顯示 **選擇圖片…**、**移除圖片**、**填滿方式**、**位置**、**淡化** 與 **模糊**。Agent Pets 會檢查圖片（PNG、JPEG 或 WebP，每邊 64 到 8192 px、最大 20 MB，不可為動畫），並把副本存到自己的資料夾。插件看不到圖片也不知道路徑；移除插件時圖片會一併刪除。**淡化** 不會低於讓文字保持清楚的最小值。
 
 ### 我的主題
 
@@ -77,7 +77,7 @@ error: nord-frost.dark.colors.dangerText: 3.97:1 < 4.5:1 on dangerText at 0.12 o
 
 #### 讓規則與 App 保持一致
 
-`scripts/lib/rules/app/` 是 App 的 `electron/plugin-panel-themes.ts`、`panel-theme-color.ts` 與 `pet-sprite-validation.ts` 逐位元組的複本；`scripts/lib/rules/src/types/` 則複製了它們引用的三個純型別模組（`panel-theme.ts`、`pet-import.ts`、`plugin.ts`），讓 `pnpm typecheck` 也能檢查驗證器。其中 `src/types/ipc.ts` 不是複本，而是驗證器用不到的 IPC 型別的一行本地替身。`scripts/lib/rules/vendor.json` 記錄所固定的 App commit 與每個檔案的 SHA-256；複本被修改過時 `pnpm test` 會失敗。
+`scripts/lib/rules/app/` 是 App 的 `electron/plugin-panel-themes.ts`、`panel-theme-color.ts`、`pet-sprite-validation.ts` 與 `raster-image.ts` 逐位元組的複本；`scripts/lib/rules/src/types/` 則複製了它們引用的模組（`panel-theme.ts`、`pet-import.ts`、`plugin.ts`、`locale.ts` 與 `pet-atlas.ts`；只有 `pet-atlas.ts` 帶有執行期的值，也就是 sprite 格線常數），讓 `pnpm typecheck` 也能檢查驗證器。其中 `src/types/ipc.ts` 不是複本，而是驗證器用不到的 IPC 型別的一行本地替身。`scripts/lib/rules/vendor.json` 記錄所固定的 App commit 與每個檔案的 SHA-256；複本被修改過時 `pnpm test` 會失敗。
 
 ```sh
 pnpm sync-rules --app <agent-pets checkout> --check         # 與固定的 commit 比對
@@ -101,8 +101,8 @@ AGENT_PETS_APP_DIR=<agent-pets checkout> pnpm test          # 測試時也一併
 2. 在那個 commit 打 tag 並推送。tag 訊息（去掉簽章）會放在 release notes 開頭，tag 的日期會成為線上目錄的 `publishedAt`。
 
    ```sh
-   git tag -a v1.0.1 -m "簡短的發佈說明"
-   git push origin v1.0.1
+   git tag -a v1.1.0 -m "簡短的發佈說明"
+   git push origin v1.1.0
    ```
 
    手動執行（**Actions → Release → Run workflow**）時必須從該 tag 啟動，並輸入相同的版本。
@@ -181,7 +181,7 @@ scripts/
   ci/                    release.yml 的 shell 步驟：檢查 tag、檢查套件、release、線上目錄分支
   assets/generate.ts     程式繪製的素材
   lib/rules/app/         原封不動複製的 App 驗證器（固定於 lib/rules/vendor.json）
-  lib/rules/src/types/   驗證器引用的 App 純型別模組（另有 ipc.ts 本地替身）
+  lib/rules/src/types/   驗證器引用的 App 型別模組（另有 ipc.ts 本地替身）
   lib/rules/             內附驗證器的轉接層
   lib/                   圖片、套件規則、ZIP、簽章、目錄項目與合併、發佈文字
 publisher.json           固定的發佈者金鑰指紋

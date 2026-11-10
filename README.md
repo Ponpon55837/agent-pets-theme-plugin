@@ -12,13 +12,13 @@ There are no screenshots yet; each theme is described below.
 
 | Theme | Light | Dark | Your own image | Type |
 |---|---|---|---|---|
-| **Sakura** | Pink watercolour washes with cherry blossoms in the top-right corner, under a pale pink overlay | Deep plum linear gradient | Light and dark | Rounded heading stack, radii 8/14/24 |
-| **Nord Frost** | Solid snow-grey with frost-blue accents | Polar-night blue-grey with a soft radial glow from the top | No | System fonts, radii 6/10/16 |
-| **Matcha Paper** | Tiled cream washi-paper texture with fibres | Solid deep matcha green | No | Serif headings, 5% larger text, radii 4/8/12 |
-| **Midnight Terminal** | High-contrast white paper with a dark teal accent | Near-black vertical gradient with a bright teal accent | Dark only | Monospace headings, radii 2/4/8 |
+| **Sakura** | Pink watercolour washes with cherry blossoms in the top-right corner, under a pale pink overlay | Three-stop linear gradient from deep plum to magenta-plum | Light and dark | Rounded heading stack, radii 8/14/24 |
+| **Nord Frost** | Radial gradient from near-white at the top through snow-grey to frost-blue grey | Radial gradient from frost-lit slate at the top down to polar-night blue-grey | Dark only | System fonts, radii 6/10/16 |
+| **Matcha Paper** | Tiled cream washi-paper texture with fibres | Three-stop linear gradient from near-black green to deep matcha | Light and dark | Serif headings, 5% larger text, radii 4/8/12 |
+| **Midnight Terminal** | High-contrast paper fading to a pale teal tint, with a dark teal accent | Near-black vertical gradient deepening to dark teal, with a bright teal accent | Light and dark | Monospace headings, radii 2/4/8 |
 | **Dune Dusk** | Sunset sky and layered sand dunes under a warm overlay | Starlit night with a crescent moon over violet dunes | Light and dark | Avenir Next / Segoe UI headings, 2% larger text, radii 10/16/26 |
 
-Every mode passes the full 1.12.0 contrast matrix, and every mode sets its own pet status pill colours. `pnpm validate` prints each mode's background, the declared image overlay and user-image dim next to the computed minimum, and whether the pill is themed.
+Every mode passes the full contrast matrix of Agent Pets 1.12.0 to 1.13.1 (the rules did not change), and every mode sets its own pet status pill colours. Since 1.1.0 every mode also sets the optional colours that would otherwise fall back to the built-in palette: `textFaint`, `infoText`, `scrim`, `shadow`, `highlight` and the `sage` family (the Claude provider colour). `pnpm validate` prints each mode's background, the declared image overlay and user-image dim next to the computed minimum, and whether the pill is themed.
 
 ## Requirements
 
@@ -48,7 +48,7 @@ Once the plugin is enabled it gets its own tab in the panel, after **Sessions**,
 - **Restore built-in** returns both modes to the default look.
 - **Settings → General → Appearance → Panel theme** shows which theme each mode uses and has **Customize…**, **Open plugin settings** and **Restore built-in**.
 
-For a theme that allows your own image (Sakura and Dune Dusk in both modes, Midnight Terminal in dark mode), its card shows the image controls for each mode in which it is in use: **Choose image…**, **Remove image**, **Fit**, **Position**, **Dim** and **Blur**. Agent Pets checks the image (PNG, JPEG or WebP, 64 to 8192 px per side, up to 20 MB, not animated) and stores a copy in its own data folder. The plugin never sees the image or its path; removing the plugin deletes it. **Dim** never goes below the minimum that keeps text readable.
+For a theme that allows your own image (every mode except Nord Frost light, whose accent text would need a 0.94 dim over a dark image), its card shows the image controls for each mode in which it is in use: **Choose image…**, **Remove image**, **Fit**, **Position**, **Dim** and **Blur**. Agent Pets checks the image (PNG, JPEG or WebP, 64 to 8192 px per side, up to 20 MB, not animated) and stores a copy in its own data folder. The plugin never sees the image or its path; removing the plugin deletes it. **Dim** never goes below the minimum that keeps text readable.
 
 ### My themes
 
@@ -77,7 +77,7 @@ error: nord-frost.dark.colors.dangerText: 3.97:1 < 4.5:1 on dangerText at 0.12 o
 
 #### Keeping the rules in sync with the app
 
-`scripts/lib/rules/app/` is a byte-for-byte copy of the app's `electron/plugin-panel-themes.ts`, `panel-theme-color.ts` and `pet-sprite-validation.ts`, and `scripts/lib/rules/src/types/` copies the three type-only modules they import (`panel-theme.ts`, `pet-import.ts`, `plugin.ts`) so `pnpm typecheck` checks the validator too. `src/types/ipc.ts` is not a copy: it is a one-line local stand-in for an IPC type the validator never uses. `scripts/lib/rules/vendor.json` pins the app commit and the SHA-256 of each file; `pnpm test` fails if a vendored file was edited.
+`scripts/lib/rules/app/` is a byte-for-byte copy of the app's `electron/plugin-panel-themes.ts`, `panel-theme-color.ts`, `pet-sprite-validation.ts` and `raster-image.ts`, and `scripts/lib/rules/src/types/` copies the modules they import (`panel-theme.ts`, `pet-import.ts`, `plugin.ts`, `locale.ts` and `pet-atlas.ts`; only `pet-atlas.ts` has run-time values, the sprite grid constants) so `pnpm typecheck` checks the validator too. `src/types/ipc.ts` is not a copy: it is a one-line local stand-in for an IPC type the validator never uses. `scripts/lib/rules/vendor.json` pins the app commit and the SHA-256 of each file; `pnpm test` fails if a vendored file was edited.
 
 ```sh
 pnpm sync-rules --app <agent-pets checkout> --check         # compare with the pinned commit
@@ -101,8 +101,8 @@ Releases are signed and published by `.github/workflows/release.yml`:
 2. Tag that commit and push the tag. The tag message (without any signature) heads the release notes, and the tag date becomes the catalog's `publishedAt`.
 
    ```sh
-   git tag -a v1.0.1 -m "Short release notes"
-   git push origin v1.0.1
+   git tag -a v1.1.0 -m "Short release notes"
+   git push origin v1.1.0
    ```
 
    A manual run (**Actions → Release → Run workflow**) must be started from the tag, with the same version typed in.
@@ -181,7 +181,7 @@ scripts/
   ci/                    shell steps of release.yml: tag check, package check, release, catalog branch
   assets/generate.ts     procedural artwork
   lib/rules/app/         the app's validator, copied verbatim (pinned in lib/rules/vendor.json)
-  lib/rules/src/types/   the app's type-only modules it imports (plus the ipc.ts stand-in)
+  lib/rules/src/types/   the app's type modules it imports (plus the ipc.ts stand-in)
   lib/rules/             adapter over the vendored validator
   lib/                   images, package rules, ZIP, signatures, catalog entry and merge, release text
 publisher.json           the pinned publisher key fingerprint
