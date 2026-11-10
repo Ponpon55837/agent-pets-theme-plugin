@@ -89,8 +89,17 @@ describe('panel theme rules (vendored app validator)', () => {
     const result = validatePanelThemes(themes)
     assert.deepEqual(result.errors, [])
     const kinds = new Set(result.themes.flatMap(theme => Object.values(theme.modes).map(mode => mode.background)))
-    assert.deepEqual([...kinds].sort(), ['gradient', 'image', 'solid'])
+    // Every mode without a packaged image is a gradient; none is left solid.
+    assert.deepEqual([...kinds].sort(), ['gradient', 'image'])
     assert.ok(themes.some(theme => Object.values(theme.modes).some(mode => mode.userImage?.allowed === true)))
+    // No mode leaves a built-in-default colour to the app's own palette.
+    for (const theme of themes) {
+      for (const [name, mode] of Object.entries(theme.modes)) {
+        for (const key of ['sage', 'sageDeep', 'sageDark', 'textFaint', 'dangerText', 'successText', 'warnText', 'infoText', 'scrim', 'shadow', 'highlight']) {
+          assert.ok(key in mode.colors, `${theme.id}.${name} sets ${key}`)
+        }
+      }
+    }
   })
 
   it('starts with the app diagnostic and then lists every other issue once', () => {

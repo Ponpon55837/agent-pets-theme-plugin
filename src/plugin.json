@@ -1,7 +1,7 @@
 {
   "id": "panel-theme-collection",
   "name": { "zh-TW": "面板主題合集", "en-US": "Panel Theme Collection" },
-  "version": "1.0.1",
+  "version": "1.1.0",
   "apiVersion": "1",
   "author": "Ponpon55837",
   "icon": "assets/icon.png",
@@ -33,7 +33,15 @@
               "border": "rgb(42 29 34 / 0.16)",
               "dangerText": "#a3261c",
               "successText": "#3b5a1e",
-              "warnText": "#7a4f00"
+              "warnText": "#7a4f00",
+              "sage": "#6f9478",
+              "sageDeep": "#3f6349",
+              "sageDark": "#2c4a35",
+              "textFaint": "#8a7480",
+              "infoText": "#2f5a94",
+              "scrim": "rgb(42 29 34 / 0.45)",
+              "shadow": "#3a1826",
+              "highlight": "#fff7fa"
             },
             "background": {
               "type": "image",
@@ -69,13 +77,21 @@
               "border": "rgb(246 233 238 / 0.18)",
               "dangerText": "#ff9e92",
               "successText": "#b8d68f",
-              "warnText": "#f2c76b"
+              "warnText": "#f2c76b",
+              "sage": "#8fbf9f",
+              "sageDeep": "#a6cfb3",
+              "sageDark": "#c4e0cc",
+              "textFaint": "#9b8690",
+              "infoText": "#a9c4f5",
+              "scrim": "rgb(12 6 9 / 0.6)",
+              "shadow": "#0a0508",
+              "highlight": "#ffeaf2"
             },
             "background": {
               "type": "gradient",
               "kind": "linear",
               "angle": 160,
-              "stops": [{ "color": "#1c1418", "at": 0 }, { "color": "#2a1824", "at": 100 }]
+              "stops": [{ "color": "#1c1418", "at": 0 }, { "color": "#2a1824", "at": 55 }, { "color": "#361a2d", "at": 100 }]
             },
             "userImage": { "allowed": true, "overlay": { "color": "#1c1418", "opacity": 0.82 } },
             "petStatus": {
@@ -93,7 +109,7 @@
       {
         "id": "nord-frost",
         "displayName": { "zh-TW": "北境霜藍", "en-US": "Nord Frost" },
-        "description": { "zh-TW": "冷靜的北極藍灰色調，只用系統字型，沒有圖片。", "en-US": "Calm arctic blue-greys with system fonts and no images." },
+        "description": { "zh-TW": "冷靜的北極藍灰色調，只用系統字型、套件不含圖片；深色模式可匯入自己的背景圖。", "en-US": "Calm arctic blue-greys with system fonts and no bundled images; dark mode accepts your own image." },
         "typography": { "body": ["system-ui", "sans-serif"], "heading": ["system-ui", "sans-serif"] },
         "shape": { "radiusSm": 6, "radiusMd": 10, "radiusLg": 16 },
         "modes": {
@@ -114,7 +130,18 @@
               "sageDark": "#3d5230",
               "dangerText": "#a3303a",
               "successText": "#3d5f2a",
-              "warnText": "#7a5300"
+              "warnText": "#7a5300",
+              "textFaint": "#6f7889",
+              "infoText": "#2a5a94",
+              "scrim": "rgb(46 52 64 / 0.45)",
+              "shadow": "#1d2330",
+              "highlight": "#f8fbff"
+            },
+            "background": {
+              "type": "gradient",
+              "kind": "radial",
+              "position": "top",
+              "stops": [{ "color": "#f8fafd", "at": 0 }, { "color": "#eceff4", "at": 55 }, { "color": "#e2e9f3", "at": 100 }]
             },
             "petStatus": {
               "background": "rgb(248 249 251 / 0.92)",
@@ -144,14 +171,19 @@
               "dangerText": "#f5b3b9",
               "successText": "#acd49a",
               "warnText": "#f0d08a",
-              "infoText": "#a9bff5"
+              "infoText": "#a9bff5",
+              "textFaint": "#8f9bb0",
+              "scrim": "rgb(20 24 31 / 0.6)",
+              "shadow": "#12151b",
+              "highlight": "#eceff4"
             },
             "background": {
               "type": "gradient",
               "kind": "radial",
               "position": "top",
-              "stops": [{ "color": "#353c4a", "at": 0 }, { "color": "#2e3440", "at": 70 }]
+              "stops": [{ "color": "#3a4659", "at": 0 }, { "color": "#2e3440", "at": 60 }, { "color": "#292e39", "at": 100 }]
             },
+            "userImage": { "allowed": true, "fit": "cover", "overlay": { "color": "#2e3440", "opacity": 0.86 } },
             "petStatus": {
               "background": "rgb(53 60 74 / 0.94)",
               "border": "rgb(136 192 208 / 0.28)",
@@ -167,7 +199,7 @@
       {
         "id": "matcha-paper",
         "displayName": { "zh-TW": "抹茶和紙", "en-US": "Matcha Paper" },
-        "description": { "zh-TW": "白天是米色和紙紋理，夜晚是深抹茶綠，標題使用襯線字。", "en-US": "Cream washi texture by day, deep matcha green at night, serif headings." },
+        "description": { "zh-TW": "白天是米色和紙紋理，夜晚是深抹茶綠漸層，標題使用襯線字；兩種模式都可換成自己的圖片。", "en-US": "Cream washi texture by day, a deep matcha gradient at night, serif headings; both modes accept your own image." },
         "typography": {
           "body": ["system-ui", "PingFang TC", "Microsoft JhengHei", "sans-serif"],
           "heading": ["ui-serif", "Georgia", "Songti TC", "serif"],
@@ -192,7 +224,12 @@
               "sageDark": "#384b27",
               "dangerText": "#a02f1f",
               "successText": "#365a1c",
-              "warnText": "#734e00"
+              "warnText": "#734e00",
+              "textFaint": "#727c68",
+              "infoText": "#2d5a85",
+              "scrim": "rgb(31 42 28 / 0.45)",
+              "shadow": "#1c2616",
+              "highlight": "#fffdf4"
             },
             "background": {
               "type": "image",
@@ -202,6 +239,7 @@
               "opacity": 0.6,
               "overlay": { "color": "#f3efe2", "opacity": 0.66 }
             },
+            "userImage": { "allowed": true, "fit": "cover", "overlay": { "color": "#f3efe2", "opacity": 0.82 } },
             "petStatus": {
               "background": "rgb(251 248 239 / 0.92)",
               "border": "rgb(76 106 43 / 0.24)",
@@ -229,8 +267,20 @@
               "sageDark": "#c9d9b8",
               "dangerText": "#ff9f90",
               "successText": "#bcd99a",
-              "warnText": "#f0c062"
+              "warnText": "#f0c062",
+              "textFaint": "#7f8d76",
+              "infoText": "#a3c6ee",
+              "scrim": "rgb(6 10 6 / 0.6)",
+              "shadow": "#060a06",
+              "highlight": "#f4f8e8"
             },
+            "background": {
+              "type": "gradient",
+              "kind": "linear",
+              "angle": 165,
+              "stops": [{ "color": "#141c14", "at": 0 }, { "color": "#18241a", "at": 50 }, { "color": "#1f301d", "at": 100 }]
+            },
+            "userImage": { "allowed": true, "fit": "cover", "overlay": { "color": "#141c14", "opacity": 0.84 } },
             "petStatus": {
               "background": "rgb(28 38 28 / 0.92)",
               "border": "rgb(156 192 105 / 0.26)",
@@ -246,7 +296,7 @@
       {
         "id": "midnight-terminal",
         "displayName": { "zh-TW": "午夜終端機", "en-US": "Midnight Terminal" },
-        "description": { "zh-TW": "近黑色漸層配青綠色強調與等寬標題；淺色版是高對比白紙。可在深色模式匯入自己的背景圖。", "en-US": "Near-black with a teal accent and monospace headings; the light set is high-contrast paper. Own image in dark mode." },
+        "description": { "zh-TW": "近黑色漸層配青綠色強調與等寬標題；淺色版是帶一抹青綠的高對比白紙。兩種模式都可匯入自己的背景圖。", "en-US": "Near-black with a teal accent and monospace headings; the light set is teal-tinted paper. Own image in both modes." },
         "typography": {
           "body": ["system-ui", "PingFang TC", "Microsoft JhengHei", "sans-serif"],
           "heading": ["ui-monospace", "Menlo", "Consolas", "monospace"]
@@ -267,8 +317,23 @@
               "border": "rgb(11 15 18 / 0.28)",
               "dangerText": "#9f1c12",
               "successText": "#235c1b",
-              "warnText": "#6b4700"
+              "warnText": "#6b4700",
+              "sage": "#4d8a57",
+              "sageDeep": "#2f6238",
+              "sageDark": "#1f4727",
+              "textFaint": "#6b777c",
+              "infoText": "#1d4f91",
+              "scrim": "rgb(11 15 18 / 0.5)",
+              "shadow": "#0b0f12",
+              "highlight": "#ffffff"
             },
+            "background": {
+              "type": "gradient",
+              "kind": "linear",
+              "angle": 180,
+              "stops": [{ "color": "#f7f7f2", "at": 0 }, { "color": "#f1f4ee", "at": 55 }, { "color": "#e6efea", "at": 100 }]
+            },
+            "userImage": { "allowed": true, "fit": "cover", "overlay": { "color": "#f7f7f2", "opacity": 0.88 } },
             "petStatus": {
               "background": "rgb(255 255 255 / 0.94)",
               "border": "rgb(11 15 18 / 0.28)",
@@ -296,13 +361,18 @@
               "sageDark": "#c2e0bb",
               "dangerText": "#ff8f86",
               "successText": "#8fe0a0",
-              "warnText": "#f5cf6a"
+              "warnText": "#f5cf6a",
+              "textFaint": "#6f8682",
+              "infoText": "#8fb8ff",
+              "scrim": "rgb(0 0 0 / 0.65)",
+              "shadow": "#000000",
+              "highlight": "#e6fffb"
             },
             "background": {
               "type": "gradient",
               "kind": "linear",
               "angle": 180,
-              "stops": [{ "color": "#0b0f12", "at": 0 }, { "color": "#0c1518", "at": 60 }, { "color": "#0f1c1f", "at": 100 }]
+              "stops": [{ "color": "#0b0f12", "at": 0 }, { "color": "#0c1518", "at": 45 }, { "color": "#0e2124", "at": 100 }]
             },
             "userImage": { "allowed": true, "fit": "cover", "overlay": { "color": "#0b0f12", "opacity": 0.85 } },
             "petStatus": {
@@ -342,7 +412,15 @@
               "border": "rgb(43 29 18 / 0.16)",
               "dangerText": "#a3261c",
               "successText": "#3d5a1c",
-              "warnText": "#744c00"
+              "warnText": "#744c00",
+              "sage": "#5f9189",
+              "sageDeep": "#356860",
+              "sageDark": "#234d46",
+              "textFaint": "#8f7763",
+              "infoText": "#2c5a92",
+              "scrim": "rgb(43 29 18 / 0.45)",
+              "shadow": "#2e1a0d",
+              "highlight": "#fff8ee"
             },
             "background": {
               "type": "image",
@@ -376,7 +454,15 @@
               "border": "rgb(243 236 228 / 0.18)",
               "dangerText": "#ff9c8c",
               "successText": "#b7d58c",
-              "warnText": "#f1c868"
+              "warnText": "#f1c868",
+              "sage": "#7fbdb2",
+              "sageDeep": "#9ccec4",
+              "sageDark": "#bfe0d9",
+              "textFaint": "#96897d",
+              "infoText": "#a8c2f5",
+              "scrim": "rgb(8 6 12 / 0.6)",
+              "shadow": "#07050b",
+              "highlight": "#fff1e2"
             },
             "background": {
               "type": "image",
